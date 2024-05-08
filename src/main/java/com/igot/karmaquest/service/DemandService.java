@@ -13,4 +13,5 @@ public interface DemandService {
 
   String delete(String id);
 
+  CustomResponse updateDemand(JsonNode demandsDetails);
 }

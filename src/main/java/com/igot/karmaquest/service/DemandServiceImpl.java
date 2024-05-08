@@ -139,13 +139,15 @@ public class DemandServiceImpl implements DemandService {
   @Override
   public CustomResponse searchDemand(SearchCriteria searchCriteria) {
     log.info("DemandServiceImpl::searchDemand");
+    CustomResponse response = new CustomResponse();
     SearchResult searchResult =  searchResultRedisTemplate.opsForValue().get(generateRedisJwtTokenKey(searchCriteria));
     if(searchResult != null) {
       log.info("SidJobServiceImpl::searchJobs: job search result fetched from redis");
-//      return searchResult;
+      response.getResult().put(Constants.RESULT, searchResult);
+      createSuccessResponse(response);
+      return response;
     }
     String searchString = searchCriteria.getSearchString();
-    CustomResponse response = new CustomResponse();
     if (searchString != null && searchString.length() < 2) {
       createErrorResponse(
           response,
@@ -210,6 +212,15 @@ public class DemandServiceImpl implements DemandService {
     } catch (Exception e) {
       return "Error deleting Entity with ID " + id + " " + e.getMessage();
     }
+  }
+
+  @Override
+  public CustomResponse updateDemand(JsonNode demandsDetails) {
+    log.info("DemandServiceImpl::updateDemand");
+    if (!demandsDetails.get("id").isEmpty()){
+
+    }
+    return null;
   }
 
   public void validatePayload(String fileName, JsonNode payload) {
