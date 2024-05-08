@@ -44,4 +44,10 @@ public class DemandController {
     return new ResponseEntity<>(response, HttpStatus.OK);
   }
 
+  @PostMapping("/interest/create")
+  public ResponseEntity<CustomResponse> createInterest(@RequestBody JsonNode demandsDetails) {
+    CustomResponse response = demandService.updateDemand(demandsDetails);
+    return new ResponseEntity<>(response, response.getResponseCode());
+  }
+
 }
