@@ -54,6 +54,8 @@ public class Constants {
     public static final String REDIS_KEY_PREFIX = "demand_";
     public static final String KEYWORD = ".keyword";
     public static final String ASC = "asc";
+    public static final String REQUEST_PAYLOAD ="requestPayload";
+    public static final String JWT_SECRET_KEY ="demand_search_result";
     private Constants() {
     }
 }

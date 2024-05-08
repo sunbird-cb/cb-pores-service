@@ -1,5 +1,7 @@
 package com.igot.karmaquest.service;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -26,10 +28,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -45,6 +50,11 @@ public class DemandServiceImpl implements DemandService {
   private CacheService cacheService;
   @Autowired
   private ObjectMapper objectMapper;
+  @Autowired
+  private RedisTemplate<String, SearchResult> searchResultRedisTemplate;
+
+  @Value("${search.result.redis.ttl}")
+  private long searchResultRedisTtl;
 
   @Override
   public CustomResponse createDemand(JsonNode demandDetails) {
@@ -128,6 +138,12 @@ public class DemandServiceImpl implements DemandService {
 
   @Override
   public CustomResponse searchDemand(SearchCriteria searchCriteria) {
+    log.info("DemandServiceImpl::searchDemand");
+    SearchResult searchResult =  searchResultRedisTemplate.opsForValue().get(generateRedisJwtTokenKey(searchCriteria));
+    if(searchResult != null) {
+      log.info("SidJobServiceImpl::searchJobs: job search result fetched from redis");
+//      return searchResult;
+    }
     String searchString = searchCriteria.getSearchString();
     CustomResponse response = new CustomResponse();
     if (searchString != null && searchString.length() < 2) {
@@ -139,7 +155,7 @@ public class DemandServiceImpl implements DemandService {
       return response;
     }
     try {
-      SearchResult searchResult =
+      searchResult =
           esUtilService.searchDocuments(Constants.INDEX_NAME, searchCriteria);
       response.getResult().put(Constants.RESULT, searchResult);
       createSuccessResponse(response);
@@ -147,8 +163,25 @@ public class DemandServiceImpl implements DemandService {
     } catch (Exception e) {
       createErrorResponse(
           response, e.getMessage(), org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR, Constants.FAILED_CONST);
+      searchResultRedisTemplate.opsForValue()
+          .set(generateRedisJwtTokenKey(searchCriteria), searchResult, searchResultRedisTtl,
+              TimeUnit.SECONDS);
       return response;
     }
+  }
+
+  public String generateRedisJwtTokenKey(Object requestPayload) {
+    if (requestPayload != null) {
+      try {
+        String reqJsonString = objectMapper.writeValueAsString(requestPayload);
+        return JWT.create()
+            .withClaim(Constants.REQUEST_PAYLOAD, reqJsonString)
+            .sign(Algorithm.HMAC256(Constants.JWT_SECRET_KEY));
+      } catch (JsonProcessingException e) {
+        log.error("Error occurred while converting json object to json string", e);
+      }
+    }
+    return "";
   }
 
   @Override
