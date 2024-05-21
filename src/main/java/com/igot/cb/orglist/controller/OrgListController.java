@@ -10,7 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/org")
+@RequestMapping("/org/bookmark")
 public class OrgListController {
     @Autowired
     private OrgListService orgListService;
