@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.igot.cb.demand.entity.DemandEntity;
 import com.igot.cb.demand.repository.DemandRepository;
+import com.igot.cb.demand.util.StatusTransitionConfig;
 import com.igot.cb.pores.cache.CacheService;
 import com.igot.cb.pores.dto.CustomResponse;
 import com.igot.cb.pores.dto.RespParam;
@@ -32,12 +33,11 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Timestamp;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Random;
-import java.util.Set;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -55,6 +55,14 @@ public class DemandServiceImpl implements DemandService {
     private ObjectMapper objectMapper;
     @Autowired
     private RedisTemplate<String, SearchResult> redisTemplate;
+
+    private StatusTransitionConfig statusTransitionConfig;
+
+    @Autowired
+    public DemandServiceImpl() throws IOException {
+        this.statusTransitionConfig = new StatusTransitionConfig(Constants.STATUS_TRANSITION_PATH);
+    }
+
     private Logger logger = LoggerFactory.getLogger(DemandServiceImpl.class);
 
     @Value("${search.result.redis.ttl}")
@@ -71,9 +79,17 @@ public class DemandServiceImpl implements DemandService {
             String id = String.valueOf(randomNumber);
             ((ObjectNode) demandDetails).put(Constants.IS_ACTIVE, Constants.ACTIVE_STATUS);
             Timestamp currentTime = new Timestamp(System.currentTimeMillis());
-            ((ObjectNode) demandDetails).put(Constants.CREATED_ON, String.valueOf(currentTime));
-            ((ObjectNode) demandDetails).put(Constants.UPDATED_ON, String.valueOf(currentTime));
-            ((ObjectNode) demandDetails).put(Constants.INTEREST_COUNT, 0);
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+            String formattedDate = dateFormat.format(new Date(currentTime.getTime()));
+            ((ObjectNode) demandDetails).put(Constants.CREATED_ON, String.valueOf(formattedDate));
+            ((ObjectNode) demandDetails).put(Constants.UPDATED_ON, String.valueOf(formattedDate));
+            String requestType = demandDetails.get(Constants.REQUEST_TYPE).asText();
+            if (requestType.equals(Constants.BROADCAST)) {
+                ((ObjectNode) demandDetails).put(Constants.STATUS, Constants.UNASSIGNED);
+                ((ObjectNode) demandDetails).put(Constants.INTEREST_COUNT, 0);
+            } else {
+                ((ObjectNode) demandDetails).put(Constants.STATUS, Constants.ASSIGNED);
+            }
 
             DemandEntity jsonNodeEntity = new DemandEntity();
             jsonNodeEntity.setDemandId(id);
@@ -207,8 +223,12 @@ public class DemandServiceImpl implements DemandService {
                     DemandEntity josnEntity = entityOptional.get();
                     JsonNode data = josnEntity.getData();
                     Timestamp currentTime = new Timestamp(System.currentTimeMillis());
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                    String formattedDate = dateFormat.format(new Date(currentTime.getTime()));
                     if (data.get(Constants.IS_ACTIVE).asBoolean()) {
                         ((ObjectNode) data).put(Constants.IS_ACTIVE, false);
+                        ((ObjectNode) data).put(Constants.UPDATED_ON, formattedDate);
+                        ((ObjectNode) data).put(Constants.DEMAND_ID, id);
                         josnEntity.setData(data);
                         josnEntity.setDemandId(id);
                         josnEntity.setUpdatedOn(currentTime);
@@ -221,7 +241,7 @@ public class DemandServiceImpl implements DemandService {
                         return Constants.DELETED_SUCCESSFULLY;
                     } else
                         log.info("demand is already inactive.");
-                        return Constants.ALREADY_INACTIVE;
+                    return Constants.ALREADY_INACTIVE;
                 } else return Constants.NO_DATA_FOUND;
             } else return Constants.INVALID_ID;
         } catch (Exception e) {
@@ -230,12 +250,74 @@ public class DemandServiceImpl implements DemandService {
         }
     }
 
+    public CustomResponse updateDemandStatus(JsonNode demandsDetails) {
+        log.info("DemandServiceImpl::updateDemandStatus:");
+        CustomResponse response = new CustomResponse();
+        if (!demandsDetails.has(Constants.DEMAND_ID) || StringUtils.isEmpty(demandsDetails.get(Constants.DEMAND_ID).asText(null)) ||
+                !demandsDetails.has(Constants.NEW_STATUS) || StringUtils.isEmpty(demandsDetails.get(Constants.NEW_STATUS).asText(null))) {
+            logger.error("demand id and newStatus are required for updating demand");
+            throw new CustomException(Constants.ERROR, Constants.MISSING_ID_OR_NEW_STATUS, HttpStatus.BAD_REQUEST);
+        }
+        log.info("updating demand with id : " + demandsDetails.get("id"));
+        try {
+            Optional<DemandEntity> optionalDemand = demandRepository.findById(demandsDetails.get(Constants.DEMAND_ID).asText());
+            if (optionalDemand.isPresent()) {
+                DemandEntity demandDbData = optionalDemand.get();
+                JsonNode data = demandDbData.getData();
+                String currentStatus = data.get(Constants.STATUS).asText();
+                String requestType = data.get(Constants.REQUEST_TYPE).asText();
+                boolean isActive = data.get(Constants.IS_ACTIVE).asBoolean();
+                String newStatus = demandsDetails.get(Constants.NEW_STATUS).asText();
+
+                if (!isActive) {
+                    logger.error("You are trying to update an inactive demand");
+                    throw new CustomException(Constants.ERROR, Constants.CANNOT_UPDATE_INACTIVE_DEMAND, HttpStatus.BAD_REQUEST);
+                }
+                if (!statusTransitionConfig.isValidTransition(requestType, currentStatus, newStatus)) {
+                    logger.error("Invalid Status transition", newStatus);
+                    throw new CustomException(Constants.ERROR, Constants.REQUESTING_WITH_INVALID_STATUS, HttpStatus.BAD_REQUEST);
+                }
+                // Update the status
+                ((ObjectNode) data).put(Constants.STATUS, newStatus);
+                demandDbData.setData(data);
+                Timestamp currentTime = new Timestamp(System.currentTimeMillis());
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                String formattedDate = dateFormat.format(new Date(currentTime.getTime()));
+                ((ObjectNode) data).put(Constants.UPDATED_ON, formattedDate);
+                demandDbData.setUpdatedOn(currentTime);
+
+                DemandEntity saveJsonEntity = demandRepository.save(demandDbData);
+
+                ObjectMapper objectMapper = new ObjectMapper();
+                ObjectNode jsonNode = objectMapper.createObjectNode();
+                jsonNode.set(Constants.DEMAND_ID, new TextNode(saveJsonEntity.getDemandId()));
+                jsonNode.setAll((ObjectNode) saveJsonEntity.getData());
+
+                Map<String, Object> map = objectMapper.convertValue(jsonNode, Map.class);
+                esUtilService.addDocument(Constants.INDEX_NAME, Constants.INDEX_TYPE, saveJsonEntity.getDemandId(), map);
+
+                cacheService.putCache(saveJsonEntity.getDemandId(), jsonNode);
+                log.info("demand updated");
+                response.setMessage(Constants.SUCCESSFULLY_UPDATED);
+                map.put(Constants.DEMAND_ID, saveJsonEntity.getDemandId());
+                response.setResult(map);
+                response.setResponseCode(HttpStatus.OK);
+            } else {
+                logger.error("Demand Data not Found with this ID");
+                throw new CustomException(Constants.ERROR, Constants.INVALID_ID, HttpStatus.NOT_FOUND);
+            }
+        } catch (Exception e) {
+            logger.error("Error occurred while updating demand status", e);
+            throw new CustomException("Error occurred while updating demand status", e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return response;
+    }
 
     public CustomResponse updateDemand(JsonNode demandsDetails) {
         log.info("DemandServiceImpl::updateDemand");
         CustomResponse response = new CustomResponse();
         if (demandsDetails.get(Constants.DEMAND_ID) == null) {
-            throw new CustomException(Constants.ERROR,"demandsDetailsEntity id is required for creating interest",HttpStatus.BAD_REQUEST);
+            throw new CustomException(Constants.ERROR, "demandsDetailsEntity id is required for creating interest", HttpStatus.BAD_REQUEST);
         }
         log.info("Creating interest for demand with id : " + demandsDetails.get("id"));
         Optional<DemandEntity> optSchemeDetails = demandRepository.findById(demandsDetails.get(Constants.DEMAND_ID).asText());
@@ -259,7 +341,6 @@ public class DemandServiceImpl implements DemandService {
             logger.error("no data found");
             throw new CustomException(Constants.ERROR, Constants.NO_DATA_FOUND, HttpStatus.NOT_FOUND);
         }
-
     }
 
     private void persistInPrimaryDb(DemandEntity fetchedEntity, JsonNode demandsDetails) {
@@ -311,7 +392,7 @@ public class DemandServiceImpl implements DemandService {
                 throw new CustomException("Validation Error", errorMessage.toString(), HttpStatus.BAD_REQUEST);
             }
         } catch (Exception e) {
-            logger.error("Failed to validate payload",e);
+            logger.error("Failed to validate payload", e);
             throw new CustomException("Failed to validate payload", e.getMessage(), HttpStatus.BAD_REQUEST);
         }
     }

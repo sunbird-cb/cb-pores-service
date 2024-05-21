@@ -57,7 +57,7 @@ public class Constants {
     public static final String JWT_SECRET_KEY ="demand_search_result";
     public static final String PAYLOAD_VALIDATION_FILE_CONTENT_PROVIDER ="/payloadValidation/contentProviderValidation.json";
     public static final String CONTENT_PROVIDER_ID ="id";
-    public static final String INTEREST_COUNT ="demand_search_result";
+    public static final String INTEREST_COUNT ="interestCount";
     public static final String INTERESTS ="demand_search_result";
     public static final String DOT_SEPARATOR = ".";
     public static final String SHA_256_WITH_RSA = "SHA256withRSA";
@@ -77,6 +77,20 @@ public class Constants {
     public static final String ERROR_WHILE_DELETING_DEMAND="Error while deleting demand with ID";
     public static final String SUCCESSFULLY_UPDATED ="successfully updated";
     public static final String CONTENT_PARTNER_NOT_FOUND ="content partner not found";
+    public static final String BROADCAST ="Broadcast";
+    public static final String STATUS ="status";
+    public static final String REQUEST_TYPE ="requestType";
+    public static final String UNASSIGNED ="Unassigned";
+    public static final String ASSIGNED ="Assigned";
+    public static final String NEW_STATUS ="newStatus";
+    public static final String STATUS_TRANSITION_PATH= "/payloadValidation/status-transitions.json";
+    public static final String ORG_BOOKMARK_ID = "orgBookmarkId";
+    public static final String PAYLOAD_VALIDATION_FILE_ORG_LIST = "/payloadValidation/orgBookmarkValidation.json";
+    public static final String ERROR_WHILE_DELETING_ORG_LIST="Error while deleting orgBookmark with ID";
+    public static final String MISSING_ID_OR_NEW_STATUS="demand id and newStatus are required for updating demand";
+    public static final String CANNOT_UPDATE_INACTIVE_DEMAND="Cannot update inactive demand";
+    public static final String REQUESTING_WITH_INVALID_STATUS="Requesting with invalid status";
+    public static final String INDEX_NAME_FOR_ORG_BOOKMARK="orgBookmark_entity";
     private Constants() {
     }
 }

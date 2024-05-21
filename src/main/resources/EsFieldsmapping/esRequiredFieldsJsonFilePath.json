@@ -3,7 +3,7 @@
     "type": "keyword"
   },
   "title": {
-    "type": "keyword"
+    "type": "text"
   },
   "objective": {
     "type": "keyword"
@@ -49,13 +49,13 @@
     "type": "keyword"
   },
   "source": {
-    "type": "keyword"
+    "type": "text"
   },
   "status": {
     "type": "keyword"
   },
   "isActive": {
-    "type": "keyword"
+    "type": "boolean"
   },
   "createdOn": {
     "type": "date",
@@ -74,37 +74,26 @@
   "interestCount": {
     "type": "integer"
   },
-  "interests": {
-    "type": "object",
-    "properties": {
-      "orgId1": {
-        "type": "object",
-        "properties": {
-          "userId": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text"
-          },
-          "orgName": {
-            "type": "text"
-          }
+  "professionalDetails": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "keyword"
+        },
+        "description": {
+          "type": "text"
+        },
+        "orgName": {
+          "type": "text"
         }
       },
-      "orgId2": {
-        "type": "object",
-        "properties": {
-          "userId": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text"
-          },
-          "orgName": {
-            "type": "text"
-          }
-        }
-      }
+      "required": [
+        "userId",
+        "description",
+        "orgName"
+      ]
     }
   }
 }
