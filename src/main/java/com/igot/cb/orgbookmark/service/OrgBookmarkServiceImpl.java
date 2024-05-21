@@ -1,4 +1,4 @@
-package com.igot.cb.orglist.service;
+package com.igot.cb.orgbookmark.service;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
@@ -8,8 +8,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
-import com.igot.cb.orglist.entity.OrgListEntity;
-import com.igot.cb.orglist.repository.OrgListRepository;
+import com.igot.cb.orgbookmark.entity.OrgBookmarkEntity;
+import com.igot.cb.orgbookmark.repository.OrgBookmarkRepository;
 import com.igot.cb.pores.cache.CacheService;
 import com.igot.cb.pores.dto.CustomResponse;
 import com.igot.cb.pores.dto.RespParam;
@@ -39,18 +39,18 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 @Slf4j
-public class OrgListServiceImpl implements OrgListService {
+public class OrgBookmarkServiceImpl implements OrgBookmarkService {
     @Autowired
     private EsUtilService esUtilService;
     @Autowired
-    private OrgListRepository orgListRepository;
+    private OrgBookmarkRepository orgBookmarkRepository;
     @Autowired
     private CacheService cacheService;
     @Autowired
     private ObjectMapper objectMapper;
     @Autowired
     private RedisTemplate<String, SearchResult> redisTemplate;
-    private Logger logger = LoggerFactory.getLogger(OrgListServiceImpl.class);
+    private Logger logger = LoggerFactory.getLogger(OrgBookmarkServiceImpl.class);
     @Value("${search.result.redis.ttl}")
     private long searchResultRedisTtl;
 
@@ -59,7 +59,7 @@ public class OrgListServiceImpl implements OrgListService {
         CustomResponse response = new CustomResponse();
         validatePayload(Constants.PAYLOAD_VALIDATION_FILE_ORG_LIST, orgDetails);
         try {
-            log.info("OrgListService::createOrgList:creating orgList");
+            log.info("OrgBookmarkService::createOrgList:creating orgList");
             String id = String.valueOf(UUID.randomUUID());
             ((ObjectNode) orgDetails).put(Constants.IS_ACTIVE, Constants.ACTIVE_STATUS);
             Timestamp currentTime = new Timestamp(System.currentTimeMillis());
@@ -68,23 +68,23 @@ public class OrgListServiceImpl implements OrgListService {
             ((ObjectNode) orgDetails).put(Constants.CREATED_ON, String.valueOf(formattedDate));
             ((ObjectNode) orgDetails).put(Constants.UPDATED_ON, String.valueOf(formattedDate));
 
-            OrgListEntity jsonNodeEntity = new OrgListEntity();
-            jsonNodeEntity.setOrgId(id);
+            OrgBookmarkEntity jsonNodeEntity = new OrgBookmarkEntity();
+            jsonNodeEntity.setOrgBookmarkId(id);
             jsonNodeEntity.setData(orgDetails);
             jsonNodeEntity.setCreatedOn(currentTime);
             jsonNodeEntity.setUpdatedOn(currentTime);
 
-            OrgListEntity saveJsonEntity = orgListRepository.save(jsonNodeEntity);
+            OrgBookmarkEntity saveJsonEntity = orgBookmarkRepository.save(jsonNodeEntity);
 
             ObjectMapper objectMapper = new ObjectMapper();
             ObjectNode jsonNode = objectMapper.createObjectNode();
-            jsonNode.set(Constants.ORG_ID, new TextNode(saveJsonEntity.getOrgId()));
+            jsonNode.set(Constants.ORG_ID, new TextNode(saveJsonEntity.getOrgBookmarkId()));
             jsonNode.setAll((ObjectNode) saveJsonEntity.getData());
 
             Map<String, Object> map = objectMapper.convertValue(jsonNode, Map.class);
             esUtilService.addDocument(Constants.INDEX_NAME, Constants.INDEX_TYPE, id, map);
 
-            cacheService.putCache(jsonNodeEntity.getOrgId(), jsonNode);
+            cacheService.putCache(jsonNodeEntity.getOrgBookmarkId(), jsonNode);
             log.info("org List created");
             response.setMessage(Constants.SUCCESSFULLY_CREATED);
             map.put(Constants.ORG_ID, id);
@@ -117,17 +117,17 @@ public class OrgListServiceImpl implements OrgListService {
                         .put(Constants.RESULT, objectMapper.readValue(cachedJson, new TypeReference<Object>() {
                         }));
             } else {
-                Optional<OrgListEntity> entityOptional = orgListRepository.findById(id);
+                Optional<OrgBookmarkEntity> entityOptional = orgBookmarkRepository.findById(id);
                 if (entityOptional.isPresent()) {
-                    OrgListEntity orgListEntity = entityOptional.get();
-                    cacheService.putCache(id, orgListEntity.getData());
+                    OrgBookmarkEntity orgBookmarkEntity = entityOptional.get();
+                    cacheService.putCache(id, orgBookmarkEntity.getData());
                     log.info("Record coming from postgres db");
                     response.setMessage(Constants.SUCCESSFULLY_READING);
                     response
                             .getResult()
                             .put(Constants.RESULT,
                                     objectMapper.convertValue(
-                                            orgListEntity.getData(), new TypeReference<Object>() {
+                                            orgBookmarkEntity.getData(), new TypeReference<Object>() {
                                             }));
                 } else {
                     logger.error("Invalid Id: {}", id);
@@ -144,7 +144,7 @@ public class OrgListServiceImpl implements OrgListService {
 
     @Override
     public CustomResponse search(SearchCriteria searchCriteria) {
-        log.info("OrgListServiceImpl::searchOrg");
+        log.info("OrgBookmarkServiceImpl::searchOrg");
         CustomResponse response = new CustomResponse();
         SearchResult searchResult = redisTemplate.opsForValue().get(generateRedisJwtTokenKey(searchCriteria));
         if (searchResult != null) {
@@ -191,20 +191,20 @@ public class OrgListServiceImpl implements OrgListService {
 
     @Override
     public String delete(String id) {
-        log.info("OrgListServiceImpl::delete");
+        log.info("OrgBookmarkServiceImpl::delete");
         try {
             if (StringUtils.isNotEmpty(id)) {
-                Optional<OrgListEntity> entityOptional = orgListRepository.findById(id);
+                Optional<OrgBookmarkEntity> entityOptional = orgBookmarkRepository.findById(id);
                 if (entityOptional.isPresent()) {
-                    OrgListEntity josnEntity = entityOptional.get();
+                    OrgBookmarkEntity josnEntity = entityOptional.get();
                     JsonNode data = josnEntity.getData();
                     Timestamp currentTime = new Timestamp(System.currentTimeMillis());
                     if (data.get(Constants.IS_ACTIVE).asBoolean()) {
                         ((ObjectNode) data).put(Constants.IS_ACTIVE, false);
                         josnEntity.setData(data);
-                        josnEntity.setOrgId(id);
+                        josnEntity.setOrgBookmarkId(id);
                         josnEntity.setUpdatedOn(currentTime);
-                        OrgListEntity updateJsonEntity = orgListRepository.save(josnEntity);
+                        OrgBookmarkEntity updateJsonEntity = orgBookmarkRepository.save(josnEntity);
                         Map<String, Object> map = objectMapper.convertValue(data, Map.class);
                         esUtilService.addDocument(Constants.INDEX_NAME, Constants.INDEX_TYPE, id, map);
                         cacheService.putCache(id, data);

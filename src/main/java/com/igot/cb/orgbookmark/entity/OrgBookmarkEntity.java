@@ -1,4 +1,4 @@
-package com.igot.cb.orglist.entity;
+package com.igot.cb.orgbookmark.entity;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
@@ -22,9 +22,9 @@ import java.sql.Timestamp;
 @Table(name = "orgList")
 @TypeDef(name = "jsonb", typeClass = JsonBinaryType.class)
 @Entity
-public class OrgListEntity {
+public class OrgBookmarkEntity {
     @Id
-    private String orgId;
+    private String orgBookmarkId;
 
     @Type(type = "jsonb")
     @Column(columnDefinition = "jsonb")
