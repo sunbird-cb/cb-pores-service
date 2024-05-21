@@ -19,7 +19,7 @@ import java.sql.Timestamp;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "orgList")
+@Table(name = "orgBookmark")
 @TypeDef(name = "jsonb", typeClass = JsonBinaryType.class)
 @Entity
 public class OrgBookmarkEntity {
