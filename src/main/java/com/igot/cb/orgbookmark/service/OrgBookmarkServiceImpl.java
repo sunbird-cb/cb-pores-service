@@ -78,16 +78,16 @@ public class OrgBookmarkServiceImpl implements OrgBookmarkService {
 
             ObjectMapper objectMapper = new ObjectMapper();
             ObjectNode jsonNode = objectMapper.createObjectNode();
-            jsonNode.set(Constants.ORG_ID, new TextNode(saveJsonEntity.getOrgBookmarkId()));
+            jsonNode.set(Constants.ORG_BOOKMARK_ID, new TextNode(saveJsonEntity.getOrgBookmarkId()));
             jsonNode.setAll((ObjectNode) saveJsonEntity.getData());
 
             Map<String, Object> map = objectMapper.convertValue(jsonNode, Map.class);
-            esUtilService.addDocument(Constants.INDEX_NAME, Constants.INDEX_TYPE, id, map);
+            esUtilService.addDocument(Constants.INDEX_NAME_FOR_ORG_BOOKMARK, Constants.INDEX_TYPE, id, map);
 
             cacheService.putCache(jsonNodeEntity.getOrgBookmarkId(), jsonNode);
             log.info("org List created");
             response.setMessage(Constants.SUCCESSFULLY_CREATED);
-            map.put(Constants.ORG_ID, id);
+            map.put(Constants.ORG_BOOKMARK_ID, id);
             response.setResult(map);
             response.setResponseCode(HttpStatus.OK);
             return response;
