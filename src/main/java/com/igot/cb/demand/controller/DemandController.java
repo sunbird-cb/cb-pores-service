@@ -1,6 +1,8 @@
 package com.igot.cb.demand.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.igot.cb.interest.entity.Interest;
+import com.igot.cb.interest.service.InterestService;
 import com.igot.cb.pores.dto.CustomResponse;
 import com.igot.cb.pores.elasticsearch.dto.SearchCriteria;
 import com.igot.cb.demand.service.DemandService;
@@ -20,6 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class DemandController {
   @Autowired
   private DemandService demandService;
+
+  @Autowired
+  private InterestService interestService;
 
   @PostMapping("/create")
   public ResponseEntity<CustomResponse> create(@RequestBody JsonNode demandsDetails) {
@@ -44,9 +49,10 @@ public class DemandController {
     return new ResponseEntity<>(response, HttpStatus.OK);
   }
 
+
   @PostMapping("/interest/create")
-  public ResponseEntity<CustomResponse> createInterest(@RequestBody JsonNode demandsDetails) {
-    CustomResponse response = demandService.updateDemand(demandsDetails);
+  public ResponseEntity<CustomResponse> createInterest(@RequestBody Interest interestDetails) {
+    CustomResponse response = interestService.createInterest(interestDetails);
     return new ResponseEntity<>(response, response.getResponseCode());
   }
 

@@ -58,7 +58,7 @@ public class Constants {
   public static final String JWT_SECRET_KEY = "demand_search_result";
   public static final String PAYLOAD_VALIDATION_FILE_CONTENT_PROVIDER = "/payloadValidation/contentProviderValidation.json";
   public static final String CONTENT_PROVIDER_ID = "id";
-  public static final String INTEREST_COUNT = "demand_search_result";
+  public static final String INTEREST_COUNT = "interestCount";
   public static final String INTERESTS = "demand_search_result";
   public static final String DOT_SEPARATOR = ".";
   public static final String SHA_256_WITH_RSA = "SHA256withRSA";
