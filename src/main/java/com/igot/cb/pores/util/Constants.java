@@ -84,13 +84,9 @@ public class Constants {
     public static final String ASSIGNED ="Assigned";
     public static final String NEW_STATUS ="newStatus";
     public static final String STATUS_TRANSITION_PATH= "/payloadValidation/status-transitions.json";
-    public static final String ORG_BOOKMARK_ID = "orgBookmarkId";
-    public static final String PAYLOAD_VALIDATION_FILE_ORG_LIST = "/payloadValidation/orgBookmarkValidation.json";
-    public static final String ERROR_WHILE_DELETING_ORG_LIST="Error while deleting orgBookmark with ID";
     public static final String MISSING_ID_OR_NEW_STATUS="demand id and newStatus are required for updating demand";
     public static final String CANNOT_UPDATE_INACTIVE_DEMAND="Cannot update inactive demand";
     public static final String REQUESTING_WITH_INVALID_STATUS="Requesting with invalid status";
-    public static final String INDEX_NAME_FOR_ORG_BOOKMARK="orgBookmark_entity";
     private Constants() {
     }
 }
