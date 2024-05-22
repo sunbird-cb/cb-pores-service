@@ -79,10 +79,8 @@ public class DemandServiceImpl implements DemandService {
             String id = String.valueOf(randomNumber);
             ((ObjectNode) demandDetails).put(Constants.IS_ACTIVE, Constants.ACTIVE_STATUS);
             Timestamp currentTime = new Timestamp(System.currentTimeMillis());
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-            String formattedDate = dateFormat.format(new Date(currentTime.getTime()));
-            ((ObjectNode) demandDetails).put(Constants.CREATED_ON, String.valueOf(formattedDate));
-            ((ObjectNode) demandDetails).put(Constants.UPDATED_ON, String.valueOf(formattedDate));
+            ((ObjectNode) demandDetails).put(Constants.CREATED_ON, String.valueOf(currentTime));
+            ((ObjectNode) demandDetails).put(Constants.UPDATED_ON, String.valueOf(currentTime));
             String requestType = demandDetails.get(Constants.REQUEST_TYPE).asText();
             if (requestType.equals(Constants.BROADCAST)) {
                 ((ObjectNode) demandDetails).put(Constants.STATUS, Constants.UNASSIGNED);
