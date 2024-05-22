@@ -77,6 +77,9 @@ public class Constants {
     public static final String ERROR_WHILE_DELETING_DEMAND="Error while deleting demand with ID";
     public static final String SUCCESSFULLY_UPDATED ="successfully updated";
     public static final String CONTENT_PARTNER_NOT_FOUND ="content partner not found";
+    public static final String ORG_BOOKMARK_ID = "orgBookmarkId";
+    public static final String PAYLOAD_VALIDATION_FILE_ORG_LIST = "/payloadValidation/orgBookmarkValidation.json";
+    public static final String ERROR_WHILE_DELETING_ORG_LIST="Error while deleting orgBookmark with ID";
     private Constants() {
     }
 }
