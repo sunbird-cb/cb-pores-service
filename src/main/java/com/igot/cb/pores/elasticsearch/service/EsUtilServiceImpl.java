@@ -63,15 +63,13 @@ public class EsUtilServiceImpl implements EsUtilService {
     this.esConfig = esConnection;
   }
 
-  @Value("${elastic.required.field.json.path}")
-  private String requiredJsonFilePath;
 
   @Override
   public RestStatus addDocument(
-      String esIndexName, String type, String id, Map<String, Object> document) {
+      String esIndexName, String type, String id, Map<String, Object> document, String JsonFilePath) {
     try {
       JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance();
-      InputStream schemaStream = schemaFactory.getClass().getResourceAsStream(requiredJsonFilePath);
+      InputStream schemaStream = schemaFactory.getClass().getResourceAsStream(JsonFilePath);
       Map<String, Object> map = objectMapper.readValue(schemaStream,
           new TypeReference<Map<String, Object>>() {
           });
@@ -95,10 +93,10 @@ public class EsUtilServiceImpl implements EsUtilService {
 
   @Override
   public RestStatus updateDocument(
-      String index, String indexType, String entityId, Map<String, Object> updatedDocument) {
+      String index, String indexType, String entityId, Map<String, Object> updatedDocument, String JsonFilePath) {
     try {
       JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance();
-      InputStream schemaStream = schemaFactory.getClass().getResourceAsStream(requiredJsonFilePath);
+      InputStream schemaStream = schemaFactory.getClass().getResourceAsStream(JsonFilePath);
       Map<String, Object> map = objectMapper.readValue(schemaStream,
           new TypeReference<Map<String, Object>>() {
           });
@@ -312,5 +310,6 @@ public class EsUtilServiceImpl implements EsUtilService {
         hit -> bulkRequest.add(new DeleteRequest(esIndexName, Constants.INDEX_TYPE, hit.getId())));
     return elasticsearchClient.bulk(bulkRequest, RequestOptions.DEFAULT);
   }
+
 }
 
