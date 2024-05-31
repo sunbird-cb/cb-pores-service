@@ -137,7 +137,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         .get(generateRedisJwtTokenKey(searchCriteria));
     if (searchResult != null) {
       log.info("AnnouncementServiceImpl::searchAnnouncement:  search result fetched from redis");
-      response.getResult().put(Constants.RESULT, searchResult.getData());
+      response.getResult().put(Constants.RESULT, searchResult);
       createSuccessResponse(response);
       return response;
     }
@@ -151,7 +151,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
     try {
       searchResult =
           esUtilService.searchDocuments(Constants.ANNOUNCEMENT_INDEX, searchCriteria);
-      response.getResult().put(Constants.RESULT, searchResult);
+      response.getResult().putAll(objectMapper.convertValue(searchResult, Map.class));
       createSuccessResponse(response);
       return response;
     } catch (Exception e) {
