@@ -51,7 +51,7 @@ public class Constants {
     public static final String RESULT = "result";
     public static final String FAILED_CONST = "FAILED";
     public static final String ERROR = "ERROR";
-    public static final String REDIS_KEY_PREFIX = "CB_PORES_";
+    public static final String REDIS_KEY_PREFIX = "cbpores_";
     public static final String KEYWORD = ".keyword";
     public static final String ASC = "asc";
     public static final String REQUEST_PAYLOAD = "requestPayload";
@@ -143,6 +143,14 @@ public class Constants {
     public static final String ORG_NAME = "orgName";
     public static final String PROVIDER_ID = "providerId";
     public static final String PROVIDER_NAME = "providerName";
+    public static final String PREV_ASSIGNED_PROVIDER = "previousAssignedProvider";
+    public static final String ANNOUNCEMENT_VALIDATION_FILE_JSON = "/payloadValidation/announcementValidation.json";
+    public static final String ANNOUNCEMENT_ID = "announcementId";
+    public static final String ANNOUNCEMENT_INDEX = "announcement_entity";
+    public static final String PLAYLIST_INDEX_NAME = "playlist";
+    public static final String KEY_PLAYLIST = "playListKey";
+    public static final String ACTIVE = "Active";
+    public static final String IN_ACTIVE = "Inactive";
     public static final String ORG_BOOKMARK_ID = "orgBookmarkId";
     public static final String PAYLOAD_VALIDATION_FILE_ORG_BOOKMARK_LIST = "/payloadValidation/orgBookmarkValidation.json";
     public static final String ERROR_WHILE_DELETING_ORG_LIST = "Error while deleting orgBookmark with ID";
