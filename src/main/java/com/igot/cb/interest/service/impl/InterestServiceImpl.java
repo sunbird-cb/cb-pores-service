@@ -198,11 +198,7 @@ public class InterestServiceImpl implements InterestService {
     }else {
       ((ObjectNode) interestDetails).put(Constants.ASSIGNED_BY, userId);
     }
-    if (interestDetails.get(Constants.ASSIGNED_BY) == null) {
-      throw new CustomException(Constants.ERROR,
-          "interestDetailsEntity id is required for assigning the interest",
-          HttpStatus.BAD_REQUEST);
-    }
+
     Optional<Interests> optSchemeDetails = interestRepository.findById(
         interestDetails.get(Constants.INTEREST_ID_RQST).asText());
     Timestamp currentTime = new Timestamp(System.currentTimeMillis());
