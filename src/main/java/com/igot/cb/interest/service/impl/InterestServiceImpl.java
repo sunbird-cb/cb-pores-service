@@ -186,12 +186,12 @@ public class InterestServiceImpl implements InterestService {
     log.info("InterestServiceImpl::assignInterestToDemand:inside the method");
     CustomResponse response = new CustomResponse();
     if (interestDetails.get(Constants.INTEREST_ID_RQST) == null || interestDetails.get(Constants.INTEREST_ID_RQST).asText().isEmpty()) {
-      response.getParams().setErrmsg("InterestId is not present");
+      response.getParams().setErrmsg(Constants.INTEREST_ID_MISSING);
       response.setResponseCode(HttpStatus.BAD_REQUEST);
       return response;
     }
     if (interestDetails.get(Constants.DEMAND_ID_RQST) == null || interestDetails.get(Constants.DEMAND_ID_RQST).asText().isEmpty()) {
-      response.getParams().setErrmsg("DemandId is not present");
+      response.getParams().setErrmsg(Constants.DEMAND_ID_MISSING);
       response.setResponseCode(HttpStatus.BAD_REQUEST);
       return response;
     }
