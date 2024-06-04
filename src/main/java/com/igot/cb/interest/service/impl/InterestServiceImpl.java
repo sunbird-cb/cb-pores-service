@@ -252,7 +252,7 @@ public class InterestServiceImpl implements InterestService {
           ((ObjectNode) assignedProvider).put(Constants.INTEREST_ID_RQST,
               interestDetails.get(Constants.INTEREST_ID_RQST));
           ((ObjectNode) assignedProvider).put(Constants.ASSIGNED_BY,
-              userId);
+              interestDetails.get(Constants.ASSIGNED_BY));
           ((ObjectNode) fetchedDemandJson).put(Constants.ASSIGNED_PROVIDER, assignedProvider);
           updateCountAndStatusOfDemand(demandEntity.get(), currentTime, fetchedDemandJson);
           log.info(
