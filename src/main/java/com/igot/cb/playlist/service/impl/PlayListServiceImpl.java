@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.igot.cb.playlist.dto.SearchDto;
 import com.igot.cb.playlist.entity.PlayListEntity;
@@ -126,6 +127,11 @@ public class PlayListServiceImpl implements PlayListSerive {
       enrichedContentJson.put(Constants.ID, jsonNodeEntity.getOrgId());
       persistInRedis(enrichedContentJson, jsonNodeEntity, jsonNodeEntity.getOrgId()+jsonNodeEntity.getRequestType());
       JsonNode playListJson = jsonNodeEntity.getData();
+      List<String> searchTags = new ArrayList<>();
+      searchTags.add(playListJson.get(Constants.TITLE).textValue().toLowerCase());
+      searchTags.add(playListJson.get(Constants.TYPE).textValue().toLowerCase());
+      ArrayNode searchTagsArray = objectMapper.valueToTree(searchTags);
+      ((ObjectNode) playListJson).putArray("searchTags").add(searchTagsArray);
       Map<String, Object> map = objectMapper.convertValue(playListJson, Map.class);
       //put it in es jsonNodeEntiy along with enrichedContentMap
       esUtilService.addDocument(Constants.PLAYLIST_INDEX_NAME, Constants.INDEX_TYPE,
@@ -411,6 +417,8 @@ public class PlayListServiceImpl implements PlayListSerive {
           HttpStatus.BAD_REQUEST,
           Constants.FAILED_CONST);
       return response;
+    }else {
+      searchCriteria.setSearchString(searchString.toLowerCase());
     }
     try {
       searchResult =
