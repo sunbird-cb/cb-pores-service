@@ -59,4 +59,17 @@ public class PlayListController {
     ApiResponse response = playListSerive.readPlaylist(id, orgId);
     return new ResponseEntity<>(response, response.getResponseCode());
   }
+
+  @PutMapping("/v2/update")
+  public Object updateV2(@RequestBody JsonNode playListDetails)
+      throws JsonProcessingException {
+    ApiResponse response = playListSerive.updateV2PlayList(playListDetails);
+    return new ResponseEntity<>(response, response.getResponseCode());
+  }
+
+  @PostMapping("/v2/create")
+  public Object createV2(@RequestBody JsonNode playListDetails) {
+    ApiResponse response = playListSerive.createV2PlayList(playListDetails);
+    return new ResponseEntity<>(response, response.getResponseCode());
+  }
 }

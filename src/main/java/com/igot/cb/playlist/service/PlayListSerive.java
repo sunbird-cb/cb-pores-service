@@ -18,4 +18,8 @@ public interface PlayListSerive {
   ApiResponse searchPlayList(SearchCriteria searchCriteria);
 
   ApiResponse readPlaylist(String id, String orgId);
+
+  ApiResponse updateV2PlayList(JsonNode playListDetails);
+
+  ApiResponse createV2PlayList(JsonNode playListDetails);
 }
