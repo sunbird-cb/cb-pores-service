@@ -43,8 +43,7 @@ public class Constants {
     public static final String REGEX = "^\"|\"$";
     public static final String IS_ACTIVE = "isActive";
     public static final Boolean ACTIVE_STATUS = true;
-    public static final String LAST_UPDATED_DATE = "lastUpdatedDate";
-    public static final String CREATED_DATE = "createdDate";
+    public static final Boolean ACTIVE_STATUS_FALSE = false;
     public static final String PAYLOAD_VALIDATION_FILE = "/payloadValidation/demandValidationData.json";
     public static final String INDEX_NAME = "demand_entity";
     public static final String INDEX_TYPE = "_doc";
@@ -229,6 +228,12 @@ public class Constants {
     public static final String ASSIGNED_PROVIDER_ID= "assignedProviderId";
     public static final String CONTENT_ID= "contentId";
     public static final String IN_PROGRESS= "InProgress";
+    public static final String CIOS_INDEX_NAME= "cios_content_entity";
+    public static final String ES_REQUIRED_FIELDS_JSON_FILE = "/EsFieldsmapping/contentEsRequiredFieldsJsonFilePath.json";
+    public static final String CIOS_CONTENT_SERVICE_KEY = "cios_content";
+    public static final String ID_PREFIX = "ext_";
+    public static final String LAST_UPDATED_ON = "lastUpdatedOn";
+    public static final String COMPETENCY = "competencyArea";
 
     private Constants() {
     }
