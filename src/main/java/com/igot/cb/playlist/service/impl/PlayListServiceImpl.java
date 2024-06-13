@@ -147,6 +147,7 @@ public class PlayListServiceImpl implements PlayListSerive {
       searchTags.add(playListJson.get(Constants.TITLE).textValue().toLowerCase());
       searchTags.add(playListJson.get(Constants.TYPE).textValue().toLowerCase());
       ArrayNode searchTagsArray = objectMapper.valueToTree(searchTags);
+      ((ObjectNode) playListJson).put(Constants.ID, String.valueOf(playListId));
       ((ObjectNode) playListJson).putArray(Constants.SEARCHTAGS).add(searchTagsArray);
       Map<String, Object> map = objectMapper.convertValue(playListJson, Map.class);
       //put it in es jsonNodeEntiy along with enrichedContentMap
@@ -360,6 +361,7 @@ public class PlayListServiceImpl implements PlayListSerive {
         persistInRedis(enrichedContentJson, playListEntity,
             playListEntity.getOrgId() + playListEntity.getRequestType());
         JsonNode playListJson = playListEntity.getData();
+        ((ObjectNode) playListJson).put(Constants.ID, playListEntity.getId());
         Map<String, Object> map = objectMapper.convertValue(playListJson, Map.class);
         //put it in es jsonNodeEntiy along with enrichedContentMap
         esUtilService.addDocument(Constants.PLAYLIST_INDEX_NAME, Constants.INDEX_TYPE,
@@ -390,8 +392,9 @@ public class PlayListServiceImpl implements PlayListSerive {
     ApiResponse response = new ApiResponse();
     try {
       log.info("PlayListService::delete");
-      Optional<PlayListEntity> optionalJsonNodeEntity = playListRepository.findById(
-              id);
+      Optional<PlayListEntity> optionalJsonNodeEntity = Optional.ofNullable(
+          (PlayListEntity) playListRepository.findByOrgId(
+              id));
       PlayListEntity playListEntity = optionalJsonNodeEntity.orElse(null);
 
       if (optionalJsonNodeEntity.isPresent()) {
@@ -433,12 +436,6 @@ public class PlayListServiceImpl implements PlayListSerive {
       return response;
     }
     String searchString = searchCriteria.getSearchString();
-    if (searchString != null && searchString.length() < 2) {
-      createErrorResponse(response, "Minimum 3 characters are required to search",
-          HttpStatus.BAD_REQUEST,
-          Constants.FAILED_CONST);
-      return response;
-    }
     if (searchString != null && searchString.length() > 2){
       searchCriteria.setSearchString(searchString.toLowerCase());
     }
@@ -469,11 +466,16 @@ public class PlayListServiceImpl implements PlayListSerive {
       log.info("Cached PlayList for orgId: " + orgId);
       if (playListStringFromRedis == null || "[null]".equals(playListStringFromRedis)
           || playListStringFromRedis.isEmpty()) {
+        String requestType = "";
+        if (id.startsWith(orgId)) {
+          // Extract the part after orgId
+          requestType = id.substring(orgId.length());
+        }
         // Fetch from postgres and add fetched playlist into redis
-        Optional<PlayListEntity> optionalJsonNodeEntity = Optional.ofNullable(
-            playListRepository.findByOrgIdAndIsActive(orgId, true));
-        if (optionalJsonNodeEntity.isPresent()) {
-          PlayListEntity playListEntity = optionalJsonNodeEntity.orElse(null);
+        List<PlayListEntity>  optionalJsonNodeEntity =
+            playListRepository.findByOrgIdAndRequestType(orgId, requestType);
+        if (!optionalJsonNodeEntity.isEmpty()) {
+          PlayListEntity playListEntity = optionalJsonNodeEntity.get(0);
           log.info("PlayListService::readPlayList::fetched playList from postgres");
           playListEntity.getData().get(Constants.CHILDREN);
           Map<String, Map<String, Object>> enrichContentMaps = new HashMap<>();
@@ -528,59 +530,51 @@ public class PlayListServiceImpl implements PlayListSerive {
     log.info("PlayListService::updateV2PlayList:inside method");
     ApiResponse response = new ApiResponse();
     try {
-      if (playListDetails.has(Constants.ID) && !playListDetails.get(Constants.ID).isEmpty()){
+      if (playListDetails.has(Constants.ID) && !playListDetails.get(Constants.ID).asText().isEmpty()){
         String id = playListDetails.get(Constants.ID).asText();
         Optional<PlayListEntity> optPlayList = playListRepository.findById(playListDetails.get(Constants.ID).asText());
         PlayListEntity playListEntityUpdated = null;
         Timestamp currentTime = new Timestamp(System.currentTimeMillis());
         if (optPlayList.isPresent()) {
+          playListEntityUpdated = optPlayList.get();
           JsonNode dataNode = optPlayList.get().getData();
-          Iterator<Entry<String, JsonNode>> fields = playListDetails.fields();
-          while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> field = fields.next();
-            String fieldName = field.getKey();
-            // Check if the field is present in the update JsonNode
-            if (dataNode.has(fieldName)) {
-              // Update the main JsonNode with the value from the update JsonNode
-              ((ObjectNode) dataNode).set(fieldName, playListDetails.get(fieldName));
-            } else {
-              ((ObjectNode) dataNode).put(fieldName, playListDetails.get(fieldName));
-            }
+          ((ObjectNode) playListDetails).put(Constants.UPDATED_ON, String.valueOf(currentTime));
+          ((ObjectNode) playListDetails).put(Constants.CREATED_ON,
+              dataNode.get(Constants.CREATED_ON));
+          playListEntityUpdated.setData(playListDetails);
+          playListEntityUpdated.setUpdatedOn(currentTime);
+          playListEntityUpdated = playListRepository.save(playListEntityUpdated);
+          if(playListDetails.has(Constants.CHILDREN) && !playListDetails.get(Constants.CHILDREN).isEmpty()){
+            JsonNode childrenNode = playListDetails.get(Constants.CHILDREN);
+            Map<String, Map<String, Object>> enrichContentMaps = new HashMap<>();
+            enrichContentMaps = fetchContentDetails(childrenNode);
+            ObjectNode enrichedContentJson = objectMapper.createObjectNode();
+            enrichedContentJson.put(Constants.CHILDREN, objectMapper.valueToTree(enrichContentMaps));
+            enrichedContentJson.put(Constants.ID, playListEntityUpdated.getOrgId());
+            persistInRedis(enrichedContentJson, optPlayList.get(),
+                playListEntityUpdated.getOrgId() + playListEntityUpdated.getRequestType()+ playListEntityUpdated.getId());
           }
-          ((ObjectNode) dataNode).remove(Constants.ID);
-          optPlayList.get().setUpdatedOn(currentTime);
-          playListEntityUpdated = playListRepository.save(optPlayList.get());
+          JsonNode jsonNode = playListEntityUpdated.getData();
+          ((ObjectNode) jsonNode).put(Constants.ID, playListEntityUpdated.getId());
+          Map<String, Object> map = objectMapper.convertValue(jsonNode, Map.class);
+          esUtilService.updateDocument(Constants.PLAYLIST_INDEX_NAME, Constants.INDEX_TYPE, id, map, requiredJsonFilePath);
+          log.info("playList updated");
+          response.setResponseCode(HttpStatus.OK);
+          response.put(Constants.RESPONSE, Constants.SUCCESS);
+          response.setResponseCode(HttpStatus.OK);
+          response.getResult().put(Constants.STATUS, Constants.SUCCESSFULLY_UPDATED);
+          response.getResult().put(Constants.ID, id);
+          return response;
+        }else {
+          response.getParams().setStatus(Constants.ID_NOT_FOUND);
+          response.setResponseCode(HttpStatus.NOT_FOUND);
+          return response;
         }
-        JsonNode childrenNode = playListDetails.get(Constants.CHILDREN);
-        Map<String, Map<String, Object>> enrichContentMaps = new HashMap<>();
-        enrichContentMaps = fetchContentDetails(childrenNode);
-        ObjectNode enrichedContentJson = objectMapper.createObjectNode();
-        enrichedContentJson.put(Constants.CHILDREN, objectMapper.valueToTree(enrichContentMaps));
-        enrichedContentJson.put(Constants.ID, playListEntityUpdated.getOrgId());
-        persistInRedis(enrichedContentJson, optPlayList.get(),
-            playListEntityUpdated.getOrgId() + playListEntityUpdated.getRequestType());
-        ObjectMapper objectMapper = new ObjectMapper();
-        ObjectNode jsonNode = objectMapper.createObjectNode();
-        jsonNode.set(Constants.ID, new TextNode(id));
-        jsonNode.setAll((ObjectNode) playListEntityUpdated.getData());
-        jsonNode.set(Constants.CREATED_ON, new TextNode(convertTimeStampToDate(playListEntityUpdated.getCreatedOn().getTime())));
-        jsonNode.set(Constants.UPDATED_ON, new TextNode(convertTimeStampToDate(playListEntityUpdated.getUpdatedOn().getTime())));
-
-        Map<String, Object> map = objectMapper.convertValue(jsonNode, Map.class);
-        esUtilService.updateDocument(Constants.PLAYLIST_INDEX_NAME, Constants.INDEX_TYPE, id, map, cbServerProperties.getElasticBookmarkJsonPath());
-        log.info("org List created");
-        response.setResponseCode(HttpStatus.OK);
-        response.put(Constants.RESPONSE, Constants.SUCCESS);
-        response.setResponseCode(HttpStatus.OK);
-        response.getResult().put(Constants.STATUS, Constants.SUCCESSFULLY_UPDATED);
-        response.getResult().put(Constants.ORG_BOOKMARK_ID, id);
-        return response;
       }else {
-        response.getParams().setStatus(Constants.FAILED);
+        response.getParams().setStatus(Constants.ID_NOT_FOUND);
         response.setResponseCode(HttpStatus.NOT_FOUND);
         return response;
       }
-
     }catch (Exception e){
       logger.error("Failed to Update PalyList: ", e);
       response.getParams().setStatus(Constants.FAILED);
