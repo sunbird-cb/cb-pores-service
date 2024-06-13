@@ -36,5 +36,11 @@
   },
   "ownerId": {
     "type": "keyword"
+  },
+  "searchTags": {
+    "type": "keyword"
+  },
+  "id": {
+    "type": "keyword"
   }
 }

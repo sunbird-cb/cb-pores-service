@@ -15,8 +15,7 @@
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "minItems": 1
+      }
     },
     "imgSource": {
       "type": "array",
@@ -32,7 +31,6 @@
   "required": [
     "type",
     "orgId",
-    "ownerId",
-    "children"
+    "ownerId"
   ]
 }
