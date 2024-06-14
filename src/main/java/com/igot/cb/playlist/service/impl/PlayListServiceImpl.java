@@ -772,6 +772,7 @@ public class PlayListServiceImpl implements PlayListSerive {
     response.setParams(new ApiRespParam());
     response.getParams().setStatus(status);
     response.setResponseCode(httpStatus);
+    response.getParams().setErrMsg(errorMessage);
   }
 
   private String convertTimeStampToDate(long timeStamp) {
