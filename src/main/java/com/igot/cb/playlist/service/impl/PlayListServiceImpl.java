@@ -346,12 +346,11 @@ public class PlayListServiceImpl implements PlayListSerive {
         ((ObjectNode) fetchedData).put(Constants.CHILDREN, playListDetails.get(Constants.CHILDREN));
         Timestamp currentTime = new Timestamp(System.currentTimeMillis());
         playListEntity.setUpdatedOn(currentTime);
-        ((ObjectNode) playListDetails).put(Constants.UPDATED_ON, String.valueOf(currentTime));
-        ((ObjectNode) playListDetails).put(Constants.CREATED_ON,
-            fetchedData.get(Constants.CREATED_ON));
+        ((ObjectNode) fetchedData).put(Constants.UPDATED_ON, String.valueOf(currentTime));
+        ((ObjectNode) fetchedData).put(Constants.CHILDREN, playListDetails.get(Constants.CHILDREN));
         ((ObjectNode) playListDetails).put(Constants.KEY_PLAYLIST,
             playListEntity.getOrgId() + playListEntity.getRequestType());
-        playListEntity.setData(playListDetails);
+        playListEntity.setData(fetchedData);
         PlayListEntity saveJsonEntity = playListRepository.save(playListEntity);
         Map<String, Map<String, Object>> enrichContentMaps = new HashMap<>();
         enrichContentMaps = fetchContentDetails(playListDetails.get(Constants.CHILDREN));
@@ -541,13 +540,17 @@ public class PlayListServiceImpl implements PlayListSerive {
         if (optPlayList.isPresent()) {
           playListEntityUpdated = optPlayList.get();
           JsonNode dataNode = optPlayList.get().getData();
-          ((ObjectNode) playListDetails).put(Constants.UPDATED_ON, String.valueOf(currentTime));
-          ((ObjectNode) playListDetails).put(Constants.CREATED_ON,
-              dataNode.get(Constants.CREATED_ON));
-          ((ObjectNode) playListDetails).put(Constants.KEY_PLAYLIST,
+          ((ObjectNode) dataNode).put(Constants.UPDATED_ON, String.valueOf(currentTime));
+          ((ObjectNode) dataNode).put(Constants.KEY_PLAYLIST,
               playListEntityUpdated.getOrgId() + playListEntityUpdated.getRequestType()
                   + playListDetails.get(Constants.ID));
-          playListEntityUpdated.setData(playListDetails);
+          if (playListDetails.has(Constants.CHILDREN) && !playListDetails.get(Constants.CHILDREN)
+              .asText()
+              .isEmpty()) {
+            ((ObjectNode) dataNode).put(Constants.CHILDREN,
+                playListDetails.get(Constants.CHILDREN));
+          }
+          playListEntityUpdated.setData(dataNode);
           playListEntityUpdated.setUpdatedOn(currentTime);
           playListEntityUpdated = playListRepository.save(playListEntityUpdated);
           if (playListDetails.has(Constants.CHILDREN) && !playListDetails.get(Constants.CHILDREN)
