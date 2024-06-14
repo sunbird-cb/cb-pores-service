@@ -244,7 +244,7 @@ public class PlayListServiceImpl implements PlayListSerive {
 
   @Override
   public ApiResponse searchPlayListForOrg(SearchDto searchDto) {
-    log.info("PlayListService::readPlayList: reading the playList");
+    log.info("PlayListService::searchPlayListForOrg: reading the playList");
     ApiResponse response = new ApiResponse();
     try {
       validatePayload(searchDto);
@@ -276,7 +276,7 @@ public class PlayListServiceImpl implements PlayListSerive {
             playListRepository.findByOrgIdAndIsActive(orgId, true));
         if (optionalJsonNodeEntity.isPresent()) {
           PlayListEntity playListEntity = optionalJsonNodeEntity.orElse(null);
-          log.info("PlayListService::readPlayList::fetched playList from postgres");
+          log.info("PlayListService::searchPlayListForOrg::fetched playList from postgres");
           playListEntity.getData().get(Constants.CHILDREN);
           Map<String, Map<String, Object>> enrichContentMaps = new HashMap<>();
           enrichContentMaps = fetchContentDetails(playListEntity.getData().get(Constants.CHILDREN));
@@ -342,7 +342,7 @@ public class PlayListServiceImpl implements PlayListSerive {
       if (!optionalJsonNodeEntity.isEmpty()) {
         PlayListEntity playListEntity = optionalJsonNodeEntity.get(0);
         JsonNode fetchedData = playListEntity.getData();
-        log.info("PlayListService::readPlayList::fetched playList from postgres");
+        log.info("PlayListService::updatePlayList::fetched playList from postgres");
         ((ObjectNode) fetchedData).put(Constants.CHILDREN, playListDetails.get(Constants.CHILDREN));
         Timestamp currentTime = new Timestamp(System.currentTimeMillis());
         playListEntity.setUpdatedOn(currentTime);
@@ -430,7 +430,7 @@ public class PlayListServiceImpl implements PlayListSerive {
     SearchResult searchResult = redisTemplate.opsForValue()
         .get(generateRedisJwtTokenKey(searchCriteria));
     if (searchResult != null) {
-      log.info("InterestServiceImpl::searchInterest: interest search result fetched from redis");
+      log.info("PlayListService::searchPlayList: search result fetched from redis");
       response.getResult().put(Constants.RESULT, searchResult);
       createSuccessResponse(response);
       return response;
@@ -457,6 +457,7 @@ public class PlayListServiceImpl implements PlayListSerive {
 
   @Override
   public ApiResponse readPlaylist(String id, String orgId) {
+    log.info("PlayListService::readPlaylist:inside method");
     ApiResponse response = new ApiResponse();
     String playListStringFromRedis = "";
     try {
@@ -541,6 +542,8 @@ public class PlayListServiceImpl implements PlayListSerive {
           ((ObjectNode) playListDetails).put(Constants.UPDATED_ON, String.valueOf(currentTime));
           ((ObjectNode) playListDetails).put(Constants.CREATED_ON,
               dataNode.get(Constants.CREATED_ON));
+          ((ObjectNode) playListDetails).put(Constants.KEY_PLAYLIST,
+              playListEntityUpdated.getOrgId() + playListEntityUpdated.getRequestType() + playListDetails.get(Constants.ID));
           playListEntityUpdated.setData(playListDetails);
           playListEntityUpdated.setUpdatedOn(currentTime);
           playListEntityUpdated = playListRepository.save(playListEntityUpdated);
@@ -606,7 +609,7 @@ public class PlayListServiceImpl implements PlayListSerive {
       jsonNodeEntity.setUpdatedOn(currentTime);
       jsonNodeEntity.setRequestType(playListDetails.get(Constants.RQST_CONTENT_TYPE).asText());
       ((ObjectNode) playListDetails).put(Constants.KEY_PLAYLIST,
-          jsonNodeEntity.getOrgId() + jsonNodeEntity.getRequestType());
+          jsonNodeEntity.getOrgId() + jsonNodeEntity.getRequestType()+ playListId);
       jsonNodeEntity.setIsActive(true);
       playListRepository.save(jsonNodeEntity);
       if(playListDetails.has(Constants.CHILDREN) && !playListDetails.get(Constants.CHILDREN).isEmpty()){
@@ -643,6 +646,72 @@ public class PlayListServiceImpl implements PlayListSerive {
       response.getParams().setStatus(Constants.FAILED);
       response.getParams().setErrMsg("Not found");
       response.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR);
+      return response;
+    }
+  }
+
+  @Override
+  public ApiResponse readV2Playlist(String id, String playListId, String orgId) {
+    log.info("PlayListService::readV2Playlist:inside method");
+    ApiResponse response = new ApiResponse();
+    String playListStringFromRedis = "";
+    try {
+      playListStringFromRedis =
+          redisCacheMngr.hget(id,
+              redisInsightIndex, orgId).toString();
+      log.info("Cached PlayList for id: " + playListId);
+      if (playListStringFromRedis == null || "[null]".equals(playListStringFromRedis)
+          || playListStringFromRedis.isEmpty()) {
+        // Fetch from postgres and add fetched playlist into redis
+        Optional<PlayListEntity> optionalJsonNodeEntity =
+            playListRepository.findById(playListId);
+        if (optionalJsonNodeEntity.isPresent()) {
+          PlayListEntity playListEntity = optionalJsonNodeEntity.get();
+          log.info("PlayListService::readPlayList::fetched playList from postgres");
+          playListEntity.getData().get(Constants.CHILDREN);
+          Map<String, Map<String, Object>> enrichContentMaps = new HashMap<>();
+          enrichContentMaps = fetchContentDetails(playListEntity.getData().get(Constants.CHILDREN));
+          ObjectNode enrichedContentJson = objectMapper.createObjectNode();
+          enrichedContentJson.put(Constants.CHILDREN, objectMapper.valueToTree(enrichContentMaps));
+          enrichedContentJson.put(Constants.ID, playListEntity.getOrgId());
+          persistInRedis(enrichedContentJson, playListEntity,
+              playListEntity.getOrgId() + playListEntity.getRequestType());
+
+          playListStringFromRedis =
+              redisCacheMngr.hget(id, redisInsightIndex, orgId).toString();
+          log.info("Cached PlayList: " + playListStringFromRedis);
+
+        } else {
+          logger.error("Failed to Fetch PlayList: ");
+          response.getParams().setStatus(Constants.FAILED);
+          response.getParams().setErrMsg(Constants.ORG_COURSE_NOT_FOUND);
+          response.setResponseCode(HttpStatus.BAD_REQUEST);
+          return response;
+        }
+
+      }
+
+      JsonNode rootNode = null;
+      rootNode = objectMapper.readTree(playListStringFromRedis);
+      JsonNode firstElement = rootNode.get(0);
+      String childrenJsonString = firstElement.get(Constants.CHILDREN).asText();
+      JsonNode childrenNode = objectMapper.readTree(childrenJsonString);
+      Map<String, JsonNode> childMap = new HashMap<>();
+      List<JsonNode> dataList = new ArrayList<>();
+      childrenNode.fields().forEachRemaining(entry -> {
+        String childId = entry.getKey();
+        JsonNode childData = entry.getValue();
+        dataList.add(childData);
+      });
+
+      response.setResponseCode(HttpStatus.OK);
+      response.getResult().put(Constants.CONTENT, dataList);
+      return response;
+    } catch (Exception e) {
+      logger.error("Failed to Create PalyList: ", e);
+      response.getParams().setStatus(Constants.FAILED);
+      response.getParams().setErrMsg(e.getMessage());
+      response.setResponseCode(HttpStatus.NOT_FOUND);
       return response;
     }
   }

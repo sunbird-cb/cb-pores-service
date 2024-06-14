@@ -22,4 +22,6 @@ public interface PlayListSerive {
   ApiResponse updateV2PlayList(JsonNode playListDetails);
 
   ApiResponse createV2PlayList(JsonNode playListDetails);
+
+  ApiResponse readV2Playlist(String id, String playListId, String orgId);
 }

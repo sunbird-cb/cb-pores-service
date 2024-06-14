@@ -72,4 +72,10 @@ public class PlayListController {
     ApiResponse response = playListSerive.createV2PlayList(playListDetails);
     return new ResponseEntity<>(response, response.getResponseCode());
   }
+
+  @GetMapping("/v2/read/{id}/{playListId}/{orgId}")
+  public Object playListReadV2(@PathVariable String id, @PathVariable String playListId, @PathVariable String orgId) {
+    ApiResponse response = playListSerive.readV2Playlist(id, playListId, orgId);
+    return new ResponseEntity<>(response, response.getResponseCode());
+  }
 }
