@@ -479,7 +479,6 @@ public class DemandServiceImpl implements DemandService {
             return response;
         }
         Map<String, Object> userMap = new HashMap<>();
-        //userMap.put("userDt", userDetails);
         userMap.put(Constants.FIRST_NAME,(String) userDetails.get(0).get(Constants.FIRST_NAME));
         response.setResponseCode(HttpStatus.OK);
         response.setResult(userMap);
