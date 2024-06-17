@@ -32,13 +32,13 @@ public class CiosController {
         return new ResponseEntity<>(searchResult, HttpStatus.OK);
     }
 
-    @DeleteMapping("/content/delete")
-    public ResponseEntity<Object> deleteContent(@RequestParam String contentId) {
+    @DeleteMapping("/content/delete/{contentId}")
+    public ResponseEntity<Object> deleteContent(@PathVariable String contentId) {
         return new ResponseEntity<>(ciosContentService.deleteContent(contentId), HttpStatus.OK);
     }
 
-    @GetMapping("/content/fetchById")
-    public ResponseEntity<Object> fetchData(@RequestParam String contentId) {
+    @GetMapping("/content/fetchById/{contentId}")
+    public ResponseEntity<Object> fetchData(@PathVariable String contentId) {
         return new ResponseEntity<>(ciosContentService.fetchDataByContentId(contentId), HttpStatus.OK);
     }
 }
