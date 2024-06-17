@@ -15,29 +15,29 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/cios/v1")
+@RequestMapping("/cios")
 @Slf4j
 public class CiosController {
     @Autowired
     CiosContentService ciosContentService;
 
-    @PostMapping(value = "/onboardContent")
+    @PostMapping(value = "/v1/onboardContent")
     public ResponseEntity<Object> onboardContent(@RequestBody List<ObjectDto> data) {
         return new ResponseEntity<>(ciosContentService.onboardContent(data), HttpStatus.OK);
     }
 
-    @PostMapping(value = "/search/content")
+    @PostMapping(value = "/v1/search/content")
     public ResponseEntity<?> searchContent(@RequestBody SearchCriteria searchCriteria) {
         SearchResult searchResult = ciosContentService.searchCotent(searchCriteria);
         return new ResponseEntity<>(searchResult, HttpStatus.OK);
     }
 
-    @DeleteMapping("/content/delete/{contentId}")
+    @DeleteMapping("/v1/content/delete/{contentId}")
     public ResponseEntity<Object> deleteContent(@PathVariable String contentId) {
         return new ResponseEntity<>(ciosContentService.deleteContent(contentId), HttpStatus.OK);
     }
 
-    @GetMapping("/content/fetchById/{contentId}")
+    @GetMapping("/v1/content/read/{contentId}")
     public ResponseEntity<Object> fetchData(@PathVariable String contentId) {
         return new ResponseEntity<>(ciosContentService.fetchDataByContentId(contentId), HttpStatus.OK);
     }
