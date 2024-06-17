@@ -23,41 +23,22 @@ public class CiosController {
 
     @PostMapping(value = "/onboardContent")
     public ResponseEntity<Object> onboardContent(@RequestBody List<ObjectDto> data) {
-        try {
-            return ResponseEntity.ok(ciosContentService.onboardContent(data));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(e.getMessage());
-        }
+        return new ResponseEntity<>(ciosContentService.onboardContent(data), HttpStatus.OK);
     }
 
     @PostMapping(value = "/search/content")
     public ResponseEntity<?> searchContent(@RequestBody SearchCriteria searchCriteria) {
-        try {
-            SearchResult searchResult = ciosContentService.searchCotent(searchCriteria);
-            return ResponseEntity.ok(searchResult);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error during content search: " + e.getMessage());
-        }
+        SearchResult searchResult = ciosContentService.searchCotent(searchCriteria);
+        return new ResponseEntity<>(searchResult, HttpStatus.OK);
     }
 
     @DeleteMapping("/content/delete")
     public ResponseEntity<Object> deleteContent(@RequestParam String contentId) {
-        try {
-            return ResponseEntity.ok(ciosContentService.deleteContent(contentId));
-        }catch (Exception e){
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(e.getMessage());
-        }
+        return new ResponseEntity<>(ciosContentService.deleteContent(contentId), HttpStatus.OK);
     }
+
     @GetMapping("/content/fetchById")
     public ResponseEntity<Object> fetchData(@RequestParam String contentId) {
-        try {
-            return ResponseEntity.ok(ciosContentService.fetchDataByContentId(contentId));
-        }catch (Exception e){
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(e.getMessage());
-        }
+        return new ResponseEntity<>(ciosContentService.fetchDataByContentId(contentId), HttpStatus.OK);
     }
 }

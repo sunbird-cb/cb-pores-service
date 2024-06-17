@@ -1,6 +1,10 @@
 package com.igot.cb.cios.service.impl;
 
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -11,6 +15,7 @@ import com.igot.cb.cios.entity.CiosContentEntity;
 import com.igot.cb.cios.repository.CiosRepository;
 import com.igot.cb.cios.repository.ExternalContentRepository;
 import com.igot.cb.cios.service.CiosContentService;
+import com.igot.cb.pores.cache.CacheService;
 import com.igot.cb.pores.elasticsearch.dto.SearchCriteria;
 import com.igot.cb.pores.elasticsearch.dto.SearchResult;
 import com.igot.cb.pores.elasticsearch.service.EsUtilService;
@@ -20,6 +25,7 @@ import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.ValidationMessage;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -46,10 +52,13 @@ public class CiosContentServiceImpl implements CiosContentService {
     EsUtilService esUtilService;
 
     @Autowired
-    private RedisTemplate redisTemplate;
+    private RedisTemplate<String, SearchResult> redisTemplate;
 
-    @Value("${content.entity.redis.ttl}")
-    private long redisTtl;
+    @Value("${search.result.redis.ttl}")
+    private long searchResultRedisTtl;
+
+    @Autowired
+    private CacheService cacheService;
 
     public String generateId() {
         long nanoTime = System.nanoTime();
@@ -58,65 +67,63 @@ public class CiosContentServiceImpl implements CiosContentService {
     }
 
     @Override
-    public Object fetchDataByContentId(String contentId) {
+    public Object fetchDataByContentId(String contentId){
         log.info("getting content by id: " + contentId);
-        try {
-            JsonNode externalContentEntity = (JsonNode) redisTemplate.opsForValue().get(Constants.CIOS_CONTENT_SERVICE_KEY + contentId);
-            if (externalContentEntity == null) {
-                log.info("Fetch from postgres and add fetched contents into redis");
-                Optional<CiosContentEntity> optionalJsonNodeEntity = ciosRepository.findByContentIdAndIsActive(contentId, true);
-                externalContentEntity = optionalJsonNodeEntity.get().getCiosData();
-                if (externalContentEntity != null) {
-                    // Store in Redis if found in PostgreSQL
-                    redisTemplate.opsForValue().set(Constants.CIOS_CONTENT_SERVICE_KEY + contentId, externalContentEntity, redisTtl, TimeUnit.SECONDS);
-                } else {
-                    throw new CustomException(Constants.ERROR, "No such content found", HttpStatus.BAD_REQUEST);
-                }
-            }
-            if (externalContentEntity != null) {
-                return externalContentEntity;
-            }
-        } catch (CustomException e) {
-            log.error("Error fetching Content: " + e.getMessage());
-            throw new CustomException(Constants.ERROR, "Error fetching content: " + e.getMessage(),HttpStatus.BAD_REQUEST);
-        } catch (Exception e) {
-            log.error("Error fetching content: " + e.getMessage());
-            throw new CustomException(Constants.ERROR, "Failed to fetch content: " + e.getMessage(),HttpStatus.BAD_REQUEST);
+        if (StringUtils.isEmpty(contentId)) {
+            log.error("CiosContentServiceImpl::read:Id not found");
+            throw new CustomException(Constants.ERROR,"contentId is mandatory",HttpStatus.BAD_REQUEST);
         }
-        return null;
+        String cachedJson = cacheService.getCache(contentId);
+        Object response = null;
+        if (StringUtils.isNotEmpty(cachedJson)) {
+            log.info("CiosContentServiceImpl::read:Record coming from redis cache");
+            try {
+                response=objectMapper.readValue(cachedJson, new TypeReference<Object>() {
+                       });
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+        }else{
+            Optional<CiosContentEntity> optionalJsonNodeEntity = ciosRepository.findByContentIdAndIsActive(contentId, true);
+            if (optionalJsonNodeEntity.isPresent()) {
+                CiosContentEntity ciosContentEntity = optionalJsonNodeEntity.get();
+                cacheService.putCache(contentId, ciosContentEntity.getCiosData());
+                log.info("CiosContentServiceImpl::read:Record coming from postgres db");
+                response=objectMapper.convertValue(ciosContentEntity.getCiosData(), new TypeReference<Object>() {
+                                        });
+            } else {
+                log.error("Invalid Id: {}", contentId);
+                throw new CustomException(Constants.ERROR,"No data found for given Id",HttpStatus.BAD_REQUEST);
+            }
+        }
+        return response;
     }
 
     @Override
     public Object deleteContent(String contentId) {
-        log.info("deleting content by ID: " + contentId);
-        try {
-            Optional<CiosContentEntity> optExternalContent = ciosRepository.findByContentIdAndIsActive(contentId, true);
-            if (optExternalContent.isPresent()) {
-                Timestamp currentTime = new Timestamp(System.currentTimeMillis());
-                CiosContentEntity externalContent = optExternalContent.get();
-                externalContent.setIsActive(false);
-                JsonNode jsonNode=externalContent.getCiosData();
-                ((ObjectNode) jsonNode.path("content")).put(Constants.IS_ACTIVE,Constants.ACTIVE_STATUS_FALSE);
-                ((ObjectNode) jsonNode.path("content")).put(Constants.UPDATED_ON, String.valueOf(currentTime));
-                externalContent.setLastUpdatedOn(currentTime);
-                externalContent.setCiosData(jsonNode);
-                ciosRepository.save(externalContent);
-                Map<String, Object> map = objectMapper.convertValue(externalContent.getCiosData().get("content"), Map.class);
-                esUtilService.addDocument(Constants.CIOS_INDEX_NAME, Constants.INDEX_TYPE,externalContent.getContentId(), map, Constants.ES_REQUIRED_FIELDS_JSON_FILE);
-                String redisKey = Constants.CIOS_CONTENT_SERVICE_KEY + externalContent.getContentId();
-                redisTemplate.delete(redisKey);
-                return "Content with id : " + contentId + " is deleted ";
-            } else {
-                return "Content with id : " + contentId + " is not found to be deleted";
-            }
-
-        } catch (CustomException e) {
-            // Handle AnnouncementException with appropriate status code
-            throw e;
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new CustomException(Constants.ERROR, e.getMessage(),HttpStatus.BAD_REQUEST);
+        log.info("CiosContentServiceImpl::read:inside the method");
+        Optional<CiosContentEntity> ciosContentEntity = ciosRepository.findByContentIdAndIsActive(
+                contentId,true);
+        Timestamp currentTime = new Timestamp(System.currentTimeMillis());
+        if (ciosContentEntity.isPresent()) {
+            CiosContentEntity fetchedEntity = ciosContentEntity.get();
+            JsonNode fetchedJsonData = fetchedEntity.getCiosData();
+            ((ObjectNode) fetchedJsonData.path("content")).put(Constants.UPDATED_ON, String.valueOf(currentTime));
+            ((ObjectNode) fetchedJsonData.path("content")).put(Constants.IS_ACTIVE,Constants.ACTIVE_STATUS_FALSE);
+            fetchedEntity.setCiosData(fetchedJsonData);
+            fetchedEntity.setLastUpdatedOn(currentTime);
+            fetchedEntity.setIsActive(false);
+            ciosRepository.save(fetchedEntity);
+            Map<String, Object> map = objectMapper.convertValue(fetchedEntity.getCiosData().get("content"), Map.class);
+            esUtilService.addDocument(Constants.CIOS_INDEX_NAME, Constants.INDEX_TYPE,fetchedEntity.getContentId(), map, Constants.ES_REQUIRED_FIELDS_JSON_FILE);
+            cacheService.deleteCache(fetchedEntity.getContentId());
+            log.info("deleted content");
+            return "Content with id : " + contentId + " is deleted";
+        } else {
+            log.error("no data found");
+            throw new CustomException(Constants.ERROR, Constants.NO_DATA_FOUND, HttpStatus.NOT_FOUND);
         }
+
     }
 
 
@@ -139,9 +146,7 @@ public class CiosContentServiceImpl implements CiosContentService {
                 ciosRepository.save(ciosContentEntity);
                 Map<String, Object> map = objectMapper.convertValue(ciosContentEntity.getCiosData().get("content"), Map.class);
                 log.info("Id of content created in Igot: " + ciosContentEntity.getContentId());
-                redisTemplate.opsForValue()
-                        .set(Constants.CIOS_CONTENT_SERVICE_KEY + ciosContentEntity.getContentId(), ciosContentEntity.getCiosData(), redisTtl,
-                                TimeUnit.SECONDS);
+                cacheService.putCache(ciosContentEntity.getContentId(), ciosContentEntity.getCiosData());
                 esUtilService.addDocument(Constants.CIOS_INDEX_NAME,Constants.INDEX_TYPE,ciosContentEntity.getContentId(), map, Constants.ES_REQUIRED_FIELDS_JSON_FILE);
             }
             return "Success";
@@ -198,12 +203,37 @@ public class CiosContentServiceImpl implements CiosContentService {
 
     @Override
     public SearchResult searchCotent(SearchCriteria searchCriteria) {
+        log.info("CiosContentServiceImpl::searchCotent");
+        SearchResult searchResult = redisTemplate.opsForValue()
+                .get(generateRedisJwtTokenKey(searchCriteria));
+        if (searchResult != null) {
+            log.info("CiosContentServiceImpl::searchCotent:  search result fetched from redis");
+            return searchResult;
+        }
         try {
-            return esUtilService.searchDocuments(Constants.CIOS_INDEX_NAME, searchCriteria);
+            searchResult= esUtilService.searchDocuments(Constants.CIOS_INDEX_NAME, searchCriteria);
+            redisTemplate.opsForValue()
+                    .set(generateRedisJwtTokenKey(searchCriteria), searchResult, searchResultRedisTtl,
+                            TimeUnit.SECONDS);
+            return searchResult;
         } catch (Exception e) {
             throw new CustomException("ERROR", e.getMessage(),HttpStatus.BAD_REQUEST);
         }
 
+    }
+
+    private String generateRedisJwtTokenKey(Object requestPayload) {
+        if (requestPayload != null) {
+            try {
+                String reqJsonString = objectMapper.writeValueAsString(requestPayload);
+                return JWT.create()
+                        .withClaim(Constants.REQUEST_PAYLOAD, reqJsonString)
+                        .sign(Algorithm.HMAC256(Constants.JWT_SECRET_KEY));
+            } catch (JsonProcessingException e) {
+                log.error("Error occurred while converting json object to json string", e);
+            }
+        }
+        return "";
     }
     public void validatePayload(String fileName, JsonNode payload) {
         log.info("CiosContentServiceImpl::validatePayload");
