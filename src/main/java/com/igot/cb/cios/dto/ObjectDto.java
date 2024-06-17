@@ -1,5 +1,6 @@
 package com.igot.cb.cios.dto;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,5 +13,5 @@ import java.io.Serializable;
 @NoArgsConstructor
 public class ObjectDto implements Serializable {
     private String identifier;
-    private String competencyArea;
+    private JsonNode competencyArea;
 }
