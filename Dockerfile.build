@@ -1,6 +1,13 @@
 FROM openjdk:8
 
-RUN apt update && apt install maven -y
+RUN apt-get update && \
+    apt-get install -y software-properties-common && \
+    apt-get install -y wget gnupg && \
+    wget -qO - https://www.apache.org/dist/maven/KEYS | apt-key add - && \
+    apt-get update && \
+    apt-get install -y maven && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY . /opt
 WORKDIR /opt
