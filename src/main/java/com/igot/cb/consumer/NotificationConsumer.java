@@ -104,11 +104,15 @@ public class NotificationConsumer {
             String allArea = "";
             String allThemes = "";
             String allSubThemes = "";
+            String description ="";
             if (request.containsKey(Constants.COMPETENCIES)) {
                 List<Map<String, String>> competencies = (List<Map<String, String>>) request.get(Constants.COMPETENCIES);
                 allArea = extractAndFormatCompetencies(competencies, Constants.AREA);
                 allThemes = extractAndFormatCompetencies(competencies, Constants.THEME);
                 allSubThemes = extractAndFormatCompetencies(competencies, Constants.SUB_THEME);
+            }
+            if (request.containsKey(Constants.OBJECTIVE)){
+                description = (String) request.get(Constants.OBJECTIVE);
             }
             // Prepare mail notification details
             mailNotificationDetails.put(Constants.EMAIL_ID_LIST, emails);
