@@ -239,7 +239,6 @@ public class Constants {
     public static final String OWNER_NAME = "ownerName";
     public static final String INTEREST_ORG_SET ="interestOrgSet";
 
-
     private Constants() {
     }
 }
