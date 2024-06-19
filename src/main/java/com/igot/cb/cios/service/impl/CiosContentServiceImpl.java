@@ -150,7 +150,7 @@ public class CiosContentServiceImpl implements CiosContentService {
                 ciosRepository.save(ciosContentEntity);
                 log.info("Id of content created: {}",ciosContentEntity.getContentId());
                 Map<String, Object> map = objectMapper.convertValue(ciosContentEntity.getCiosData().get("content"), Map.class);
-                log.info("map value for elastic search {}",map);
+                log.debug("map value for elastic search {}",map);
                 cacheService.putCache(ciosContentEntity.getContentId(), ciosContentEntity.getCiosData());
                 esUtilService.addDocument(Constants.CIOS_INDEX_NAME,Constants.INDEX_TYPE,ciosContentEntity.getContentId(), map, cbServerProperties.getElasticCiosJsonPath());
             }
