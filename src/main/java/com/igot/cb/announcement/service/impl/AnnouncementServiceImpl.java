@@ -156,6 +156,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
       if (searchCriteria.getPageSize() == 0) {
         searchCriteria.setPageSize(serverProperties.getAnnouncementDefaultSearchPageSize());
       }
+
       Map<String, Object> expiredOnMap = new HashMap<>();
       SimpleDateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd");
       expiredOnMap.put(Constants.SEARCH_OPERATION_GREATER_THAN_EQUALS, dateFormat.format(new Date()));
