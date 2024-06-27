@@ -238,6 +238,8 @@ public class Constants {
     public static final Boolean ACTIVE_STATUS_FALSE = false;
     public static final String OWNER_NAME = "ownerName";
     public static final String INTEREST_ORG_SET ="interestOrgSet";
+    public static final String ORG = "org";
+    public static final String SPV_ORG = "Karmayogi Bharat";
 
 
     private Constants() {
