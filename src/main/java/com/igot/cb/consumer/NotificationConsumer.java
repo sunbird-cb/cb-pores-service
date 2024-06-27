@@ -128,8 +128,8 @@ public class NotificationConsumer {
             // Send notifications
             if (status.equals(Constants.ASSIGNED) || status.equals(Constants.UNASSIGNED)) {
                 if(isSpvRequest){
-                    mailNotificationDetails.put(Constants.ORG,Constants.SPV_ORG);
-                    mailNotificationDetails.put(Constants.ORG_NAME,Constants.SPV_ORG);
+                    mailNotificationDetails.put(Constants.ORG,Constants.SPV_ORG_NAME);
+                    mailNotificationDetails.put(Constants.ORG_NAME,Constants.SPV_ORG_NAME);
                 }
                 sendNotificationToProvidersAsync(mailNotificationDetails);
             }
@@ -329,8 +329,8 @@ public class NotificationConsumer {
         mailNotificationDetails.put(Constants.EMAIL_ID_LIST, emails);
         mailNotificationDetails.put(Constants.SUB, subjectLine);
         mailNotificationDetails.put(Constants.BODY, body);
-        mailNotificationDetails.put(Constants.ORG,Constants.SPV_ORG);
-        mailNotificationDetails.put(Constants.ORG_NAME,Constants.SPV_ORG);
+        mailNotificationDetails.put(Constants.ORG,Constants.SPV_ORG_NAME);
+        mailNotificationDetails.put(Constants.ORG_NAME,Constants.SPV_ORG_NAME);
         sendNotificationToProvidersAsync(mailNotificationDetails);
     }
 
