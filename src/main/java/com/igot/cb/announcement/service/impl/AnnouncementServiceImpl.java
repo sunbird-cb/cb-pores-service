@@ -19,14 +19,15 @@ import com.igot.cb.pores.elasticsearch.dto.SearchCriteria;
 import com.igot.cb.pores.elasticsearch.dto.SearchResult;
 import com.igot.cb.pores.elasticsearch.service.EsUtilService;
 import com.igot.cb.pores.exceptions.CustomException;
+import com.igot.cb.pores.util.CbServerProperties;
 import com.igot.cb.pores.util.Constants;
 import com.igot.cb.pores.util.PayloadValidation;
 import java.sql.Timestamp;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +61,9 @@ public class AnnouncementServiceImpl implements AnnouncementService {
 
   @Autowired
   private RedisTemplate<String, SearchResult> redisTemplate;
+
+  @Autowired
+  private CbServerProperties serverProperties;
 
   @Value("${search.result.redis.ttl}")
   private long searchResultRedisTtl;
@@ -149,6 +153,21 @@ public class AnnouncementServiceImpl implements AnnouncementService {
       return response;
     }
     try {
+      if (searchCriteria.getPageSize() == 0) {
+        searchCriteria.setPageSize(serverProperties.getAnnouncementDefaultSearchPageSize());
+      }
+
+      Map<String, Object> expiredOnMap = new HashMap<>();
+      SimpleDateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd");
+      expiredOnMap.put(Constants.SEARCH_OPERATION_GREATER_THAN_EQUALS, dateFormat.format(new Date()));
+      if (MapUtils.isNotEmpty(searchCriteria.getFilterCriteriaMap())) {
+        searchCriteria.getFilterCriteriaMap().put(Constants.EXPIRED_ON, expiredOnMap);
+      } else {
+        HashMap<String, Object> filterCriteria = new HashMap<>();
+        filterCriteria.put(Constants.EXPIRED_ON, expiredOnMap);
+        searchCriteria.setFilterCriteriaMap(filterCriteria);
+      }
+
       searchResult =
           esUtilService.searchDocuments(Constants.ANNOUNCEMENT_INDEX, searchCriteria);
       response.getResult().putAll(objectMapper.convertValue(searchResult, Map.class));
