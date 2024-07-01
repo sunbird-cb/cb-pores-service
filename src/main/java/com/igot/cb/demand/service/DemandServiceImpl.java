@@ -418,15 +418,20 @@ public class DemandServiceImpl implements DemandService {
                 ObjectMapper objectMapper = new ObjectMapper();
                 ObjectNode jsonNode = objectMapper.createObjectNode();
                 jsonNode.set(Constants.DEMAND_ID, new TextNode(saveJsonEntity.getDemandId()));
-                if (saveJsonEntity.getData().has(Constants.TITLE) && !saveJsonEntity.getData()
-                    .get(Constants.TITLE).asText()
-                    .isEmpty() && !saveJsonEntity.getData().get(Constants.TITLE).isNull()) {
-                    List<String> searchTags = new ArrayList<>();
-                    searchTags.add(
-                        saveJsonEntity.getData().get(Constants.TITLE).textValue().toLowerCase());
-                    ArrayNode searchTagsArray = objectMapper.valueToTree(searchTags);
-                    ((ObjectNode) saveJsonEntity.getData()).putArray(Constants.SEARCHTAGS)
-                        .add(searchTagsArray);
+                if (!saveJsonEntity.getData().isNull()){
+                    if (saveJsonEntity.getData().has(Constants.TITLE) && !saveJsonEntity.getData()
+                        .get(Constants.TITLE).asText()
+                        .isEmpty() && !saveJsonEntity.getData().get(Constants.TITLE).isNull()) {
+                        List<String> searchTags = new ArrayList<>();
+                        searchTags.add(
+                            saveJsonEntity.getData().get(Constants.TITLE).textValue().toLowerCase());
+                        ArrayNode searchTagsArray = objectMapper.valueToTree(searchTags);
+                        ((ObjectNode) saveJsonEntity.getData()).putArray(Constants.SEARCHTAGS)
+                            .add(searchTagsArray);
+                    }
+                }else {
+                    logger.error("Demand Data not Found with this ID");
+                    throw new CustomException(Constants.ERROR, Constants.INVALID_ID, HttpStatus.NOT_FOUND);
                 }
                 jsonNode.setAll((ObjectNode) saveJsonEntity.getData());
                 Map<String, Object> map = objectMapper.convertValue(jsonNode, Map.class);
