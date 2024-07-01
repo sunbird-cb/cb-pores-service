@@ -198,12 +198,15 @@ public class DemandServiceImpl implements DemandService {
             ObjectMapper objectMapper = new ObjectMapper();
             ObjectNode jsonNode = objectMapper.createObjectNode();
             jsonNode.set(Constants.DEMAND_ID, new TextNode(saveJsonEntity.getDemandId()));
-            if (saveJsonEntity.getData().has(Constants.TITLE) && !saveJsonEntity.getData().get(Constants.TITLE).asText()
-                .isEmpty()) {
+            if (saveJsonEntity.getData().has(Constants.TITLE) && !saveJsonEntity.getData()
+                .get(Constants.TITLE).asText()
+                .isEmpty() && !saveJsonEntity.getData().get(Constants.TITLE).isNull()) {
                 List<String> searchTags = new ArrayList<>();
-                searchTags.add(saveJsonEntity.getData().get(Constants.TITLE).textValue().toLowerCase());
+                searchTags.add(
+                    saveJsonEntity.getData().get(Constants.TITLE).textValue().toLowerCase());
                 ArrayNode searchTagsArray = objectMapper.valueToTree(searchTags);
-                ((ObjectNode) saveJsonEntity.getData()).putArray(Constants.SEARCHTAGS).add(searchTagsArray);
+                ((ObjectNode) saveJsonEntity.getData()).putArray(Constants.SEARCHTAGS)
+                    .add(searchTagsArray);
             }
             jsonNode.setAll((ObjectNode) saveJsonEntity.getData());
             Map<String, Object> map = objectMapper.convertValue(jsonNode, Map.class);
@@ -415,12 +418,15 @@ public class DemandServiceImpl implements DemandService {
                 ObjectMapper objectMapper = new ObjectMapper();
                 ObjectNode jsonNode = objectMapper.createObjectNode();
                 jsonNode.set(Constants.DEMAND_ID, new TextNode(saveJsonEntity.getDemandId()));
-                if (saveJsonEntity.getData().has(Constants.TITLE) && !saveJsonEntity.getData().get(Constants.TITLE).asText()
-                    .isEmpty()) {
+                if (saveJsonEntity.getData().has(Constants.TITLE) && !saveJsonEntity.getData()
+                    .get(Constants.TITLE).asText()
+                    .isEmpty() && !saveJsonEntity.getData().get(Constants.TITLE).isNull()) {
                     List<String> searchTags = new ArrayList<>();
-                    searchTags.add(saveJsonEntity.getData().get(Constants.TITLE).textValue().toLowerCase());
+                    searchTags.add(
+                        saveJsonEntity.getData().get(Constants.TITLE).textValue().toLowerCase());
                     ArrayNode searchTagsArray = objectMapper.valueToTree(searchTags);
-                    ((ObjectNode) saveJsonEntity.getData()).putArray(Constants.SEARCHTAGS).add(searchTagsArray);
+                    ((ObjectNode) saveJsonEntity.getData()).putArray(Constants.SEARCHTAGS)
+                        .add(searchTagsArray);
                 }
                 jsonNode.setAll((ObjectNode) saveJsonEntity.getData());
                 Map<String, Object> map = objectMapper.convertValue(jsonNode, Map.class);
