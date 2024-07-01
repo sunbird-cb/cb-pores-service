@@ -208,7 +208,6 @@ public class DemandServiceImpl implements DemandService {
             jsonNode.setAll((ObjectNode) saveJsonEntity.getData());
             Map<String, Object> map = objectMapper.convertValue(jsonNode, Map.class);
             esUtilService.addDocument(Constants.INDEX_NAME, Constants.INDEX_TYPE, id, map, cbServerProperties.getElasticDemandJsonPath());
-
             cacheService.putCache(jsonNodeEntity.getDemandId(), jsonNode);
             log.info("demand created successfully");
 
