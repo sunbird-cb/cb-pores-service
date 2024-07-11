@@ -7,7 +7,9 @@ import com.igot.cb.designation.entity.DesignationEntity;
 import com.igot.cb.designation.repository.DesignationRepository;
 import com.igot.cb.designation.service.DesignationService;
 import com.igot.cb.pores.cache.CacheService;
+import com.igot.cb.pores.dto.CustomResponse;
 import com.igot.cb.pores.elasticsearch.service.EsUtilService;
+import com.igot.cb.pores.exceptions.CustomException;
 import com.igot.cb.pores.util.CbServerProperties;
 import com.igot.cb.pores.util.Constants;
 import com.igot.cb.pores.util.PayloadValidation;
@@ -22,6 +24,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -36,6 +39,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -111,6 +115,82 @@ public class DesignationServiceImpl implements DesignationService {
 
         });
     log.info("DesignationServiceImpl::loadDesignationFromExcel::created the designations");
+  }
+
+  @Override
+  public CustomResponse createDesignation(JsonNode designationDetails) {
+    log.info("DesignationServiceImpl::createDesignation");
+    CustomResponse response = new CustomResponse();
+    try {
+      AtomicLong count = new AtomicLong(designationRepository.count());
+      DesignationEntity designationEntity = new DesignationEntity();
+      String formattedId = String.format("DESG-%06d", count.incrementAndGet());
+      ((ObjectNode) designationDetails).put(Constants.STATUS, Constants.ACTIVE);
+      ((ObjectNode) designationDetails).put(Constants.ID, formattedId);
+      Timestamp currentTime = new Timestamp(System.currentTimeMillis());
+      ((ObjectNode) designationDetails).put(Constants.CREATED_ON, String.valueOf(currentTime));
+      ((ObjectNode) designationDetails).put(Constants.UPDATED_ON, String.valueOf(currentTime));
+      designationEntity.setId(formattedId);
+      designationEntity.setData(designationDetails);
+      designationEntity.setIsActive(true);
+      designationEntity.setCreatedOn(currentTime);
+      designationEntity.setUpdatedOn(currentTime);
+      designationRepository.save(designationEntity);
+      log.info(
+          "DesignationServiceImpl::createDesignation::persited designation in postgres with id: "
+              + formattedId);
+      Map<String, Object> map = objectMapper.convertValue(designationDetails, Map.class);
+      esUtilService.addDocument(Constants.DESIGNATION_INDEX_NAME, Constants.INDEX_TYPE,
+          formattedId, map, cbServerProperties.getElasticDesignationJsonPath());
+      cacheService.putCache(formattedId, designationDetails);
+      log.info(
+          "DesignationServiceImpl::createDesignation::created the designation with: "
+              + formattedId);
+      response.setMessage(Constants.SUCCESSFULLY_CREATED);
+      map.put(Constants.INTEREST_ID_RQST, designationEntity.getId());
+      response.setResult(map);
+      response.setResponseCode(HttpStatus.OK);
+      return response;
+    } catch (Exception e) {
+      log.error("Error occurred while creating Designation", e);
+      throw new CustomException("error while processing", e.getMessage(),
+          HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Override
+  public CustomResponse deleteDesignation(
+      String id) {
+    log.info("DesignationServiceImpl::deleteDesignation");
+    CustomResponse response = new CustomResponse();
+    try {
+      Optional<DesignationEntity> optionalDesignationEntity = Optional.ofNullable(
+          designationRepository.findByIdAndIsActive(id, true));
+      if (optionalDesignationEntity.isPresent()){
+        DesignationEntity designationEntity = optionalDesignationEntity.get();
+        designationEntity.setIsActive(false);
+        Timestamp currentTime = new Timestamp(System.currentTimeMillis());
+        designationEntity.setUpdatedOn(currentTime);
+        ((ObjectNode) designationEntity.getData()).put(Constants.UPDATED_ON, String.valueOf(currentTime));
+        ((ObjectNode) designationEntity.getData()).put(Constants.STATUS, Constants.IN_ACTIVE);
+        Map<String, Object> map = objectMapper.convertValue(designationEntity.getData(), Map.class);
+        esUtilService.addDocument(Constants.DESIGNATION_INDEX_NAME, Constants.INDEX_TYPE,
+            designationEntity.getId(), map, cbServerProperties.getElasticDesignationJsonPath());
+        cacheService.deleteCache(id);
+        response.setResponseCode(HttpStatus.OK);
+        return response;
+      }else {
+        response.setMessage("No data found for this id");
+        response.setResponseCode(HttpStatus.BAD_REQUEST);
+        return response;
+      }
+    } catch (Exception e) {
+      log.error(e.getMessage());
+      response.getParams().setStatus(Constants.FAILED);
+      response.setMessage(e.getMessage());
+      response.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR);
+      return response;
+    }
   }
 
   private List<Map<String, String>> processExcelFile(MultipartFile incomingFile) {

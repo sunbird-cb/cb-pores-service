@@ -83,7 +83,7 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
             competencyAreaEntity.setIsActive(true);
             competencyAreaEntity.setCreatedOn(currentTime);
             competencyAreaEntity.setUpdatedOn(currentTime);
-            designationRepository.save(competencyAreaEntity);
+            competencyAreaRepository.save(competencyAreaEntity);
             log.info(
                 "DesignationServiceImpl::loadDesignationFromExcel::persited designation in postgres with id: "
                     + formattedId);

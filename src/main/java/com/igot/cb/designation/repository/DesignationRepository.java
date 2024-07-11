@@ -7,4 +7,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface DesignationRepository extends JpaRepository<DesignationEntity, String> {
 
+  public DesignationEntity findByIdAndIsActive(String id, Boolean isActive);
 }

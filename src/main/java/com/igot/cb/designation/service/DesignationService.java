@@ -1,8 +1,15 @@
 package com.igot.cb.designation.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.igot.cb.pores.dto.CustomResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface DesignationService {
 
- public void loadDesignationFromExcel(MultipartFile file);
+  public void loadDesignationFromExcel(MultipartFile file);
+
+  public CustomResponse createDesignation(JsonNode designationDetails);
+
+  public CustomResponse deleteDesignation(
+      String id);
 }
