@@ -1,11 +1,15 @@
 package com.igot.cb.designation.service.impl;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.igot.cb.designation.entity.DesignationEntity;
 import com.igot.cb.designation.repository.DesignationRepository;
 import com.igot.cb.designation.service.DesignationService;
+import com.igot.cb.interest.service.impl.InterestServiceImpl;
 import com.igot.cb.pores.cache.CacheService;
 import com.igot.cb.pores.dto.CustomResponse;
 import com.igot.cb.pores.elasticsearch.service.EsUtilService;
@@ -19,17 +23,25 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
@@ -38,6 +50,8 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -65,8 +79,10 @@ public class DesignationServiceImpl implements DesignationService {
   @Autowired
   private CbServerProperties cbServerProperties;
 
+  private Logger logger = LoggerFactory.getLogger(InterestServiceImpl.class);
+
   @Override
-  public void loadDesignationFromExcel(MultipartFile file) {
+  public void loadDesignation(MultipartFile file) {
     log.info("DesignationServiceImpl::loadDesignationFromExcel");
     List<Map<String, String>> processedData = processExcelFile(file);
     log.info("No.of processedData from excel: " + processedData.size());
@@ -95,6 +111,11 @@ public class DesignationServiceImpl implements DesignationService {
             Timestamp currentTime = new Timestamp(System.currentTimeMillis());
             ((ObjectNode) eachDesignation).put(Constants.CREATED_ON, String.valueOf(currentTime));
             ((ObjectNode) eachDesignation).put(Constants.UPDATED_ON, String.valueOf(currentTime));
+            ((ObjectNode) eachDesignation).put(Constants.VERSION, 1);
+            List<String> searchTags = new ArrayList<>();
+            searchTags.add(eachDesignation.get(Constants.DESIGNATION).textValue().toLowerCase());
+            ArrayNode searchTagsArray = objectMapper.valueToTree(searchTags);
+            ((ObjectNode) eachDesignation).putArray(Constants.SEARCHTAGS).add(searchTagsArray);
             designationEntity.setId(formattedId);
             designationEntity.setData(eachDesignation);
             designationEntity.setIsActive(true);
@@ -115,6 +136,114 @@ public class DesignationServiceImpl implements DesignationService {
 
         });
     log.info("DesignationServiceImpl::loadDesignationFromExcel::created the designations");
+  }
+
+  @Override
+  public CustomResponse readDesignation(String id) {
+    log.info("DesignationServiceImpl::readDesignation::reading the designation");
+    CustomResponse response = new CustomResponse();
+    if (StringUtils.isEmpty(id)) {
+      logger.error("InterestServiceImpl::read:Id not found");
+      response.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR);
+      response.setMessage(Constants.ID_NOT_FOUND);
+      return response;
+    }
+    try {
+      String cachedJson = cacheService.getCache(id);
+      if (StringUtils.isNotEmpty(cachedJson)) {
+        log.info("DesignationServiceImpl::read:Record coming from redis cache");
+        response.setMessage(Constants.SUCCESSFULLY_READING);
+        response
+            .getResult()
+            .put(Constants.RESULT, objectMapper.readValue(cachedJson, new TypeReference<Object>() {
+            }));
+        response.setResponseCode(HttpStatus.OK);
+      } else {
+        Optional<DesignationEntity> entityOptional = designationRepository.findByIdAndIsActive(id, true);
+        if (entityOptional.isPresent()) {
+          DesignationEntity designationEntity = entityOptional.get();
+          cacheService.putCache(id, designationEntity.getData());
+          log.info("DesignationServiceImpl::read:Record coming from postgres db");
+          response.setMessage(Constants.SUCCESSFULLY_READING);
+          response
+              .getResult()
+              .put(Constants.RESULT,
+                  objectMapper.convertValue(
+                      designationEntity.getData(), new TypeReference<Object>() {
+                      }));
+          response.setResponseCode(HttpStatus.OK);
+        } else {
+          logger.error("Invalid Id: {}", id);
+          response.setResponseCode(HttpStatus.NOT_FOUND);
+          response.setMessage(Constants.INVALID_ID);
+        }
+      }
+    } catch (Exception e) {
+      logger.error("Error while mapping JSON for id {}: {}", id, e.getMessage(), e);
+      throw new CustomException(Constants.ERROR, "error while processing",
+          HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    return response;
+  }
+
+  @Override
+  public CustomResponse updateDesignation(JsonNode updateDesignationDetails) {
+    log.info("DesignationServiceImpl::updateDesignation::inside the method");
+    payloadValidation.validatePayload(Constants.DESIGNATION_PAYLOAD_VALIDATION,
+        updateDesignationDetails);
+    CustomResponse response = new CustomResponse();
+    try {
+      if (updateDesignationDetails.has(Constants.ID) && !updateDesignationDetails.get(Constants.ID)
+          .isNull() && updateDesignationDetails.has(Constants.REF_NODES)
+          && !updateDesignationDetails.get(Constants.REF_NODES).isNull()) {
+        Timestamp currentTime = new Timestamp(System.currentTimeMillis());
+        Optional<DesignationEntity> designationEntiy = designationRepository.findById(
+            updateDesignationDetails.get(Constants.ID).asText());
+        DesignationEntity designationEntityUpdated = null;
+        if (designationEntiy.isPresent()) {
+          JsonNode dataNode = designationEntiy.get().getData();
+          Iterator<Entry<String, JsonNode>> fields = updateDesignationDetails.fields();
+          while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> field = fields.next();
+            String fieldName = field.getKey();
+            // Check if the field is present in the update JsonNode
+            if (dataNode.has(fieldName)) {
+              // Update the main JsonNode with the value from the update JsonNode
+              ((ObjectNode) dataNode).set(fieldName, updateDesignationDetails.get(fieldName));
+            } else {
+              ((ObjectNode) dataNode).put(fieldName, updateDesignationDetails.get(fieldName));
+            }
+          }
+          designationEntiy.get().setUpdatedOn(currentTime);
+          ((ObjectNode) dataNode).put(Constants.UPDATED_ON, new TextNode(
+              convertTimeStampToDate(designationEntiy.get().getUpdatedOn().getTime())));
+          designationEntityUpdated = designationRepository.save(designationEntiy.get());
+          ObjectNode jsonNode = objectMapper.createObjectNode();
+          jsonNode.set(Constants.ID,
+              new TextNode(updateDesignationDetails.get(Constants.ID).asText()));
+          jsonNode.setAll((ObjectNode) designationEntityUpdated.getData());
+          jsonNode.set(Constants.UPDATED_ON, new TextNode(
+              convertTimeStampToDate(designationEntityUpdated.getUpdatedOn().getTime())));
+          Map<String, Object> map = objectMapper.convertValue(jsonNode, Map.class);
+          esUtilService.updateDocument(Constants.INDEX_NAME_FOR_ORG_BOOKMARK, Constants.INDEX_TYPE,
+              designationEntityUpdated.getId(), map,
+              cbServerProperties.getElasticBookmarkJsonPath());
+          cacheService.putCache(designationEntityUpdated.getId(),
+              designationEntityUpdated.getData());
+          log.info("updated the Designation");
+          response.setMessage(Constants.SUCCESSFULLY_CREATED);
+          map.put(Constants.ID, designationEntityUpdated.getId());
+          response.setResult(map);
+          response.setResponseCode(HttpStatus.OK);
+          log.info("InterestServiceImpl::createInterest::persited interest in Pores");
+          return response;
+        }
+      }
+    } catch (Exception e) {
+      log.error("Error while processing file: {}", e.getMessage());
+      throw new RuntimeException(e.getMessage());
+    }
+    return null;
   }
 
   @Override
@@ -330,4 +459,10 @@ public class DesignationServiceImpl implements DesignationService {
     return dateFormat.parse(value);
   }
 
+  private String convertTimeStampToDate(long timeStamp) {
+    Instant instant = Instant.ofEpochMilli(timeStamp);
+    OffsetDateTime dateTime = instant.atOffset(ZoneOffset.UTC);
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy'T'HH:mm:ss.SSS'Z'");
+    return dateTime.format(formatter);
+  }
 }

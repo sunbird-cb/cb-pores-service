@@ -6,6 +6,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface DesignationService {
 
+  public void loadDesignation(MultipartFile file);
+
+  public CustomResponse readDesignation(String id);
+
+  public CustomResponse updateDesignation(JsonNode updateDesignationDetails);
   public void loadDesignationFromExcel(MultipartFile file);
 
   public CustomResponse createDesignation(JsonNode designationDetails);
