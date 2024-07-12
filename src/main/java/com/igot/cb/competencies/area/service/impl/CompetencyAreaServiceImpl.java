@@ -123,6 +123,7 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
       searchTags.add(competencyArea.get(Constants.TITLE).textValue().toLowerCase());
       ArrayNode searchTagsArray = objectMapper.valueToTree(searchTags);
       ((ObjectNode) competencyArea).putArray(Constants.SEARCHTAGS).add(searchTagsArray);
+      competencyArea = addExtraFilds(competencyArea);
       competencyAreaEntity.setId(formattedId);
       competencyAreaEntity.setData(competencyArea);
       competencyAreaEntity.setIsActive(true);
@@ -149,6 +150,11 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
       throw new CustomException("error while processing", e.getMessage(),
           HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  private JsonNode addExtraFilds(JsonNode competencyArea) {
+    log.info("CompetencyAreaService::updateCompArea");
+
   }
 
   @Override

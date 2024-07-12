@@ -43,6 +43,11 @@ public class DesignationController {
     CustomResponse response = designationService.readDesignation(id);
     return new ResponseEntity<>(response, response.getResponseCode());
   }
+  @PutMapping(value = "/update", produces = "application/json")
+  public ResponseEntity<CustomResponse> update(@RequestBody JsonNode updateDesignationDetails) {
+    CustomResponse response = designationService.updateDesignation(updateDesignationDetails);
+    return new ResponseEntity<>(response, response.getResponseCode());
+  }
 
   //update API to store the refNodes
   @PostMapping("/create")
@@ -56,12 +61,5 @@ public class DesignationController {
     CustomResponse response = designationService.deleteDesignation(id);
     return new ResponseEntity<>(response, response.getResponseCode());
   }
-
-  @PutMapping(value = "/update", produces = "application/json")
-  public ResponseEntity<CustomResponse> update(@RequestBody JsonNode updateDesignationDetails) {
-    CustomResponse response = designationService.updateDesignation(updateDesignationDetails);
-    return new ResponseEntity<>(response, response.getResponseCode());
-  }
-
 
 }

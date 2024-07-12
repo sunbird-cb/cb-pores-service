@@ -33,5 +33,35 @@
   },
   "searchTags": {
     "type": "keyword"
+  },
+  "additionalProperties": {
+    "type": "keyword"
+  },
+  "source": {
+    "type": "keyword"
+  },
+  "level": {
+    "type": "keyword"
+  },
+  "levelId": {
+    "type": "keyword"
+  },
+  "isActive": {
+    "type": "boolean"
+  },
+  "createdBy": {
+    "type": "keyword"
+  },
+  "updatedBy": {
+    "type": "keyword"
+  },
+  "reviewedDate": {
+    "type": "keyword"
+  },
+  "reviewedBy": {
+    "type": "keyword"
+  },
+  "wfId": {
+    "type": "keyword"
   }
 }
