@@ -13,6 +13,24 @@
       "items": {
         "type": "string"
       }
+    },
+    "source": {
+      "type": "string"
+    },
+    "level": {
+      "type": "string"
+    },
+    "levelId": {
+      "type": "integer"
+    },
+    "reviewedDate": {
+      "type": "string"
+    },
+    "reviewedBy": {
+      "type": "string"
+    },
+    "wfId": {
+      "type": "string"
     }
   },
   "required": [

@@ -3,6 +3,7 @@ package com.igot.cb.designation.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.igot.cb.designation.service.DesignationService;
 import com.igot.cb.pores.dto.CustomResponse;
+import com.igot.cb.pores.elasticsearch.dto.SearchCriteria;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -59,6 +60,12 @@ public class DesignationController {
   @DeleteMapping("/delete/{id}")
   public ResponseEntity<CustomResponse> deleteDesignation(@PathVariable String id) {
     CustomResponse response = designationService.deleteDesignation(id);
+    return new ResponseEntity<>(response, response.getResponseCode());
+  }
+
+  @PostMapping("/search")
+  public ResponseEntity<?> search(@RequestBody SearchCriteria searchCriteria) {
+    CustomResponse response = designationService.searchDesignation(searchCriteria);
     return new ResponseEntity<>(response, response.getResponseCode());
   }
 

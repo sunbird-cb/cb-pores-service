@@ -1,15 +1,22 @@
 package com.igot.cb.competencies.area.service.impl;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
+import com.igot.cb.authentication.util.AccessTokenValidator;
 import com.igot.cb.competencies.area.entity.CompetencyAreaEntity;
 import com.igot.cb.competencies.area.repository.CompetencyAreaRepository;
 import com.igot.cb.competencies.area.service.CompetencyAreaService;
 import com.igot.cb.pores.cache.CacheService;
 import com.igot.cb.pores.dto.CustomResponse;
+import com.igot.cb.pores.dto.RespParam;
+import com.igot.cb.pores.elasticsearch.dto.SearchCriteria;
+import com.igot.cb.pores.elasticsearch.dto.SearchResult;
 import com.igot.cb.pores.elasticsearch.service.EsUtilService;
 import com.igot.cb.pores.exceptions.CustomException;
 import com.igot.cb.pores.util.CbServerProperties;
@@ -27,9 +34,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -59,51 +70,75 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
   @Autowired
   private FileProcessService fileProcessService;
 
+  @Autowired
+  private AccessTokenValidator accessTokenValidator;
+
+  @Value("${search.result.redis.ttl}")
+  private long searchResultRedisTtl;
+
+  @Autowired
+  private RedisTemplate<String, SearchResult> redisTemplate;
+
 
   @Override
-  public void loadCompetencyArea(MultipartFile file) {
+  public void loadCompetencyArea(MultipartFile file, String token) {
     log.info("CompetencyAreaService::loadDesignationFromExcel");
-    List<Map<String, String>> processedData = fileProcessService.processExcelFile(file);
-    log.info("No.of processedData from excel: " + processedData.size());
-    JsonNode designationJson = objectMapper.valueToTree(processedData);
-    AtomicLong startingId = new AtomicLong(competencyAreaRepository.count());
-    CompetencyAreaEntity competencyAreaEntity = new CompetencyAreaEntity();
-    designationJson.forEach(
-        eachDesignation -> {
-          String formattedId = String.format("COMAREA-%06d", startingId.incrementAndGet());
-          if (!eachDesignation.isNull()) {
-            ((ObjectNode) eachDesignation).put(Constants.ID, formattedId);
-            ((ObjectNode) eachDesignation).put(Constants.TITLE, eachDesignation.get(Constants.COMPETENCY_AREA_TYPE));
-            payloadValidation.validatePayload(Constants.COMP_AREA_PAYLOAD_VALIDATION,
-                eachDesignation);
-            ((ObjectNode) eachDesignation).put(Constants.STATUS, Constants.ACTIVE);
-            Timestamp currentTime = new Timestamp(System.currentTimeMillis());
-            ((ObjectNode) eachDesignation).put(Constants.CREATED_ON, String.valueOf(currentTime));
-            ((ObjectNode) eachDesignation).put(Constants.UPDATED_ON, String.valueOf(currentTime));
-            ((ObjectNode) eachDesignation).put(Constants.VERSION, 1);
-            List<String> searchTags = new ArrayList<>();
-            searchTags.add(eachDesignation.get(Constants.TITLE).textValue().toLowerCase());
-            ArrayNode searchTagsArray = objectMapper.valueToTree(searchTags);
-            ((ObjectNode) eachDesignation).putArray(Constants.SEARCHTAGS).add(searchTagsArray);
-            competencyAreaEntity.setId(formattedId);
-            competencyAreaEntity.setData(eachDesignation);
-            competencyAreaEntity.setIsActive(true);
-            competencyAreaEntity.setCreatedOn(currentTime);
-            competencyAreaEntity.setUpdatedOn(currentTime);
-            competencyAreaRepository.save(competencyAreaEntity);
-            log.info(
-                "CompetencyAreaService::loadDesignationFromExcel::persited designation in postgres with id: "
-                    + formattedId);
-            Map<String, Object> map = objectMapper.convertValue(eachDesignation, Map.class);
-            esUtilService.addDocument(Constants.COMP_AREA_INDEX_NAME, Constants.INDEX_TYPE,
-                formattedId, map, cbServerProperties.getElasticCompAreaJsonPath());
-            cacheService.putCache(formattedId, eachDesignation);
-            log.info(
-                "CompetencyAreaService::loadDesignationFromExcel::created the designation with: "
-                    + formattedId);
-          }
+    String userId = accessTokenValidator.verifyUserToken(token);
+    if (!StringUtils.isBlank(userId)){
+      List<Map<String, String>> processedData = fileProcessService.processExcelFile(file);
+      log.info("No.of processedData from excel: " + processedData.size());
+      JsonNode jsonNode = objectMapper.valueToTree(processedData);
+      AtomicLong startingId = new AtomicLong(competencyAreaRepository.count());
+      CompetencyAreaEntity competencyAreaEntity = new CompetencyAreaEntity();
+      jsonNode.forEach(
+          eachCompArea -> {
+            if (eachCompArea.has(Constants.COMPETENCY_AREA_TYPE)){
+             if (!eachCompArea.get(
+                 Constants.COMPETENCY_AREA_TYPE).asText().isEmpty()){
+               String formattedId = String.format("COMAREA-%06d", startingId.incrementAndGet());
+               JsonNode dataNode = objectMapper.createObjectNode();
+               ((ObjectNode) dataNode).put(Constants.ID, formattedId);
+               ((ObjectNode) dataNode).put(Constants.TITLE, eachCompArea.get(Constants.COMPETENCY_AREA_TYPE).asText());
+               String descriptionValue =
+                   (eachCompArea.has(Constants.DESCRIPTION_PAYLOAD) && !eachCompArea.get(
+                       Constants.DESCRIPTION_PAYLOAD).isNull())
+                       ? eachCompArea.get(Constants.DESCRIPTION).asText()
+                       : "";
+               ((ObjectNode) dataNode).put(Constants.DESCRIPTION, descriptionValue);
+               ((ObjectNode) dataNode).put(Constants.STATUS, Constants.LIVE);
+               Timestamp currentTime = new Timestamp(System.currentTimeMillis());
+               ((ObjectNode) dataNode).put(Constants.CREATED_ON, String.valueOf(currentTime));
+               ((ObjectNode) dataNode).put(Constants.UPDATED_ON, String.valueOf(currentTime));
+               ((ObjectNode) dataNode).put(Constants.CREATED_BY, userId);
+               ((ObjectNode) dataNode).put(Constants.VERSION, 1);
+               payloadValidation.validatePayload(Constants.DESIGNATION_PAYLOAD_VALIDATION,
+                   dataNode);
+               List<String> searchTags = new ArrayList<>();
+               searchTags.add(dataNode.get(Constants.TITLE).textValue().toLowerCase());
+               ArrayNode searchTagsArray = objectMapper.valueToTree(searchTags);
+               ((ObjectNode) dataNode).putArray(Constants.SEARCHTAGS).add(searchTagsArray);
+               dataNode = addExtraFields(dataNode);
+               competencyAreaEntity.setId(formattedId);
+               competencyAreaEntity.setData(dataNode);
+               competencyAreaEntity.setIsActive(true);
+               competencyAreaEntity.setCreatedOn(currentTime);
+               competencyAreaEntity.setUpdatedOn(currentTime);
+               competencyAreaRepository.save(competencyAreaEntity);
+               log.info(
+                   "CompetencyAreaService::loadDesignationFromExcel::persited designation in postgres with id: "
+                       + formattedId);
+               Map<String, Object> map = objectMapper.convertValue(dataNode, Map.class);
+               esUtilService.addDocument(Constants.COMP_AREA_INDEX_NAME, Constants.INDEX_TYPE,
+                   formattedId, map, cbServerProperties.getElasticCompJsonPath());
+               cacheService.putCache(formattedId, dataNode);
+               log.info(
+                   "CompetencyAreaService::loadDesignationFromExcel::created the designation with: "
+                       + formattedId);
+             }
+            }
 
-        });
+          });
+    }
   }
 
   @Override
@@ -114,7 +149,7 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
       AtomicLong count = new AtomicLong(competencyAreaRepository.count());
       CompetencyAreaEntity competencyAreaEntity = new CompetencyAreaEntity();
       String formattedId = String.format("COMAREA-%06d", count.incrementAndGet());
-      ((ObjectNode) competencyArea).put(Constants.STATUS, Constants.ACTIVE);
+      ((ObjectNode) competencyArea).put(Constants.STATUS, Constants.LIVE);
       ((ObjectNode) competencyArea).put(Constants.ID, formattedId);
       Timestamp currentTime = new Timestamp(System.currentTimeMillis());
       ((ObjectNode) competencyArea).put(Constants.CREATED_ON, String.valueOf(currentTime));
@@ -135,7 +170,7 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
               + formattedId);
       Map<String, Object> map = objectMapper.convertValue(competencyArea, Map.class);
       esUtilService.addDocument(Constants.COMP_AREA_INDEX_NAME, Constants.INDEX_TYPE,
-          formattedId, map, cbServerProperties.getElasticCompAreaJsonPath());
+          formattedId, map, cbServerProperties.getElasticCompJsonPath());
       cacheService.putCache(formattedId, competencyArea);
       log.info(
           "CompetencyAreaService::createCompArea::created the compArea with: "
@@ -153,14 +188,19 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
   }
 
   private JsonNode addExtraFields(JsonNode competencyArea) {
-    log.info("CompetencyAreaService::updateCompArea");
-    String descriptionValue =
-        (competencyArea.has(Constants.DESCRIPTION_PAYLOAD) && !competencyArea.get(
-            Constants.DESCRIPTION_PAYLOAD).isNull())
-            ? competencyArea.get(Constants.DESIGNATION).asText("")
-            : "";
-    ((ObjectNode) competencyArea).put(Constants.DESCRIPTION, descriptionValue);
+    log.info("CompetencyAreaService::addExtraFields");
     ((ObjectNode) competencyArea).put(Constants.TYPE, Constants.COMPETENCY_AREA_TYPE);
+    ((ObjectNode) competencyArea).put(Constants.VERSION, 1);
+    ((ObjectNode) competencyArea).put(Constants.SOURCE, (JsonNode) null);
+    ((ObjectNode) competencyArea).putArray(Constants.ADDITIONAL_PROPERTIES);
+    ((ObjectNode) competencyArea).put(Constants.LEVEL, Constants.INITIATIVE);
+    ((ObjectNode) competencyArea).put(Constants.IS_ACTIVE, true);
+    ((ObjectNode) competencyArea).put(Constants.LEVEL_ID, 0);
+    ((ObjectNode) competencyArea).put(Constants.REVIEWED_BY, (JsonNode) null);
+    ((ObjectNode) competencyArea).put(Constants.REVIEWED_DATE, (JsonNode) null);
+    ((ObjectNode) competencyArea).put(Constants.UPDATED_BY, (JsonNode) null);
+    ((ObjectNode) competencyArea).put(Constants.ADDITIONAL_PROPERTIES, (JsonNode) null);
+    return competencyArea;
   }
 
   @Override
@@ -198,8 +238,6 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
           jsonNode.set(Constants.ID,
               new TextNode(updatedCompArea.get(Constants.ID).asText()));
           jsonNode.setAll((ObjectNode) competencyAreaEntityUpdated.getData());
-          jsonNode.set(Constants.UPDATED_ON, new TextNode(
-              convertTimeStampToDate(competencyAreaEntityUpdated.getUpdatedOn().getTime())));
           Map<String, Object> map = objectMapper.convertValue(jsonNode, Map.class);
           esUtilService.updateDocument(Constants.INDEX_NAME_FOR_ORG_BOOKMARK, Constants.INDEX_TYPE,
               competencyAreaEntityUpdated.getId(), map,
@@ -211,7 +249,7 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
           map.put(Constants.ID, competencyAreaEntityUpdated.getId());
           response.setResult(map);
           response.setResponseCode(HttpStatus.OK);
-          log.info("InterestServiceImpl::createInterest::persited interest in Pores");
+          log.info("CompetencyAreaService::updateCompArea::persited interest in Pores");
           return response;
         }else {
           response.setMessage("No data found for this id");
@@ -229,10 +267,72 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
     }
   }
 
+  @Override
+  public CustomResponse searchCompArea(SearchCriteria searchCriteria) {
+    log.info("CompetencyAreaService::updateCompArea::persited interest in Pores");
+    CustomResponse response = new CustomResponse();
+    SearchResult searchResult = redisTemplate.opsForValue()
+        .get(generateRedisJwtTokenKey(searchCriteria));
+    if (searchResult != null) {
+      log.info("searchDesignation:search result fetched from redis");
+      response.getResult().put(Constants.RESULT, searchResult);
+      createSuccessResponse(response);
+      return response;
+    }
+    String searchString = searchCriteria.getSearchString();
+    if (searchString != null && searchString.length() < 2) {
+      createErrorResponse(response, "Minimum 3 characters are required to search",
+          HttpStatus.BAD_REQUEST,
+          Constants.FAILED_CONST);
+      return response;
+    }
+    try {
+      searchResult =
+          esUtilService.searchDocuments(Constants.COMP_AREA_INDEX_NAME, searchCriteria);
+      response.getResult().put(Constants.RESULT, searchResult);
+      createSuccessResponse(response);
+      return response;
+    } catch (Exception e) {
+      createErrorResponse(response, e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR,
+          Constants.FAILED_CONST);
+      redisTemplate.opsForValue()
+          .set(generateRedisJwtTokenKey(searchCriteria), searchResult, searchResultRedisTtl,
+              TimeUnit.SECONDS);
+      return response;
+    }
+  }
+
   private String convertTimeStampToDate(long timeStamp) {
     Instant instant = Instant.ofEpochMilli(timeStamp);
     OffsetDateTime dateTime = instant.atOffset(ZoneOffset.UTC);
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy'T'HH:mm:ss.SSS'Z'");
     return dateTime.format(formatter);
+  }
+
+  public String generateRedisJwtTokenKey(Object requestPayload) {
+    if (requestPayload != null) {
+      try {
+        String reqJsonString = objectMapper.writeValueAsString(requestPayload);
+        return JWT.create()
+            .withClaim(Constants.REQUEST_PAYLOAD, reqJsonString)
+            .sign(Algorithm.HMAC256(Constants.JWT_SECRET_KEY));
+      } catch (JsonProcessingException e) {
+        log.error("Error occurred while converting json object to json string", e);
+      }
+    }
+    return "";
+  }
+
+  public void createSuccessResponse(CustomResponse response) {
+    response.setParams(new RespParam());
+    response.getParams().setStatus(Constants.SUCCESS);
+    response.setResponseCode(HttpStatus.OK);
+  }
+
+  public void createErrorResponse(
+      CustomResponse response, String errorMessage, HttpStatus httpStatus, String status) {
+    response.setParams(new RespParam());
+    response.getParams().setStatus(status);
+    response.setResponseCode(httpStatus);
   }
 }

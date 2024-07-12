@@ -1,0 +1,19 @@
+package com.igot.cb.competencies.subtheme.controller;
+
+import com.igot.cb.competencies.subtheme.service.CompetencySubThemeService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+
+@RestController
+@RequestMapping("/competencySubTheme")
+@Slf4j
+public class CompetencySubThemeController {
+
+  @Autowired
+  private CompetencySubThemeService competencyThemeService;
+
+
+}
