@@ -259,6 +259,11 @@ public class DesignationServiceImpl implements DesignationService {
       Timestamp currentTime = new Timestamp(System.currentTimeMillis());
       ((ObjectNode) designationDetails).put(Constants.CREATED_ON, String.valueOf(currentTime));
       ((ObjectNode) designationDetails).put(Constants.UPDATED_ON, String.valueOf(currentTime));
+      ((ObjectNode) designationDetails).put(Constants.VERSION, 1);
+      List<String> searchTags = new ArrayList<>();
+      searchTags.add(designationDetails.get(Constants.DESIGNATION).textValue().toLowerCase());
+      ArrayNode searchTagsArray = objectMapper.valueToTree(searchTags);
+      ((ObjectNode) designationDetails).putArray(Constants.SEARCHTAGS).add(searchTagsArray);
       designationEntity.setId(formattedId);
       designationEntity.setData(designationDetails);
       designationEntity.setIsActive(true);
@@ -276,7 +281,7 @@ public class DesignationServiceImpl implements DesignationService {
           "DesignationServiceImpl::createDesignation::created the designation with: "
               + formattedId);
       response.setMessage(Constants.SUCCESSFULLY_CREATED);
-      map.put(Constants.INTEREST_ID_RQST, designationEntity.getId());
+      map.put(Constants.ID, designationEntity.getId());
       response.setResult(map);
       response.setResponseCode(HttpStatus.OK);
       return response;
@@ -293,8 +298,7 @@ public class DesignationServiceImpl implements DesignationService {
     log.info("DesignationServiceImpl::deleteDesignation");
     CustomResponse response = new CustomResponse();
     try {
-      Optional<DesignationEntity> optionalDesignationEntity = Optional.ofNullable(
-          designationRepository.findByIdAndIsActive(id, true));
+      Optional<DesignationEntity> optionalDesignationEntity = designationRepository.findByIdAndIsActive(id, true);
       if (optionalDesignationEntity.isPresent()){
         DesignationEntity designationEntity = optionalDesignationEntity.get();
         designationEntity.setIsActive(false);
@@ -302,11 +306,13 @@ public class DesignationServiceImpl implements DesignationService {
         designationEntity.setUpdatedOn(currentTime);
         ((ObjectNode) designationEntity.getData()).put(Constants.UPDATED_ON, String.valueOf(currentTime));
         ((ObjectNode) designationEntity.getData()).put(Constants.STATUS, Constants.IN_ACTIVE);
+        designationRepository.save(designationEntity);
         Map<String, Object> map = objectMapper.convertValue(designationEntity.getData(), Map.class);
         esUtilService.addDocument(Constants.DESIGNATION_INDEX_NAME, Constants.INDEX_TYPE,
             designationEntity.getId(), map, cbServerProperties.getElasticDesignationJsonPath());
         cacheService.deleteCache(id);
         response.setResponseCode(HttpStatus.OK);
+        response.setMessage(Constants.DELETED_SUCCESSFULLY);
         return response;
       }else {
         response.setMessage("No data found for this id");

@@ -11,7 +11,6 @@ public interface DesignationService {
   public CustomResponse readDesignation(String id);
 
   public CustomResponse updateDesignation(JsonNode updateDesignationDetails);
-  public void loadDesignationFromExcel(MultipartFile file);
 
   public CustomResponse createDesignation(JsonNode designationDetails);
 

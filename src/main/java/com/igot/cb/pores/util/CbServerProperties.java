@@ -108,4 +108,7 @@ public class CbServerProperties {
   @Value("${elastic.required.field.designation.json.path}")
   private String elasticDesignationJsonPath;
 
+  @Value("${elastic.required.field.compArea.json.path}")
+  private String elasticCompAreaJsonPath;
+
 }

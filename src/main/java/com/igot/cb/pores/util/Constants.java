@@ -267,7 +267,8 @@ public class Constants {
     public static final String DESIGNATION_INDEX_NAME = "designation_entity";
     public static final String VERSION = "version";
     public static final String REF_NODES = "refNodes";
-
+    public static final String COMP_AREA_INDEX_NAME = "comp_area_entity";
+    public static final String COMP_AREA_PAYLOAD_VALIDATION = "/payloadValidation/compAreaValidation.json";
 
     private Constants() {
     }
