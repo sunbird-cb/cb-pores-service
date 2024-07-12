@@ -91,47 +91,48 @@ public class DesignationServiceImpl implements DesignationService {
     DesignationEntity designationEntity = new DesignationEntity();
     designationJson.forEach(
         eachDesignation -> {
-          String formattedId = String.format("DESG-%06d", startingId.incrementAndGet());
           if (!eachDesignation.isNull()) {
-            ((ObjectNode) eachDesignation).put(Constants.ID, formattedId);
-            if (eachDesignation.has(Constants.UPDATED_DESIGNATION) && !eachDesignation.get(
-                Constants.UPDATED_DESIGNATION).isNull()) {
+            if (eachDesignation.has(Constants.COMPETENCY_AREA_TYPE) && !eachDesignation.get(
+                Constants.COMPETENCY_AREA_TYPE).isEmpty() && !eachDesignation.get(
+                Constants.COMPETENCY_AREA_TYPE).isNull()) {
+              String formattedId = String.format("DESG-%06d", startingId.incrementAndGet());
+              ((ObjectNode) eachDesignation).put(Constants.ID, formattedId);
               ((ObjectNode) eachDesignation).put(Constants.DESIGNATION,
                   eachDesignation.get(Constants.UPDATED_DESIGNATION));
+              String descriptionValue =
+                  (eachDesignation.has(Constants.DESCRIPTION_PAYLOAD) && !eachDesignation.get(
+                      Constants.DESCRIPTION_PAYLOAD).isNull())
+                      ? eachDesignation.get(Constants.DESCRIPTION).asText("")
+                      : "";
+              ((ObjectNode) eachDesignation).put(Constants.DESCRIPTION, descriptionValue);
+              payloadValidation.validatePayload(Constants.DESIGNATION_PAYLOAD_VALIDATION,
+                  eachDesignation);
+              ((ObjectNode) eachDesignation).put(Constants.STATUS, Constants.ACTIVE);
+              Timestamp currentTime = new Timestamp(System.currentTimeMillis());
+              ((ObjectNode) eachDesignation).put(Constants.CREATED_ON, String.valueOf(currentTime));
+              ((ObjectNode) eachDesignation).put(Constants.UPDATED_ON, String.valueOf(currentTime));
+              ((ObjectNode) eachDesignation).put(Constants.VERSION, 1);
+              List<String> searchTags = new ArrayList<>();
+              searchTags.add(eachDesignation.get(Constants.DESIGNATION).textValue().toLowerCase());
+              ArrayNode searchTagsArray = objectMapper.valueToTree(searchTags);
+              ((ObjectNode) eachDesignation).putArray(Constants.SEARCHTAGS).add(searchTagsArray);
+              designationEntity.setId(formattedId);
+              designationEntity.setData(eachDesignation);
+              designationEntity.setIsActive(true);
+              designationEntity.setCreatedOn(currentTime);
+              designationEntity.setUpdatedOn(currentTime);
+              designationRepository.save(designationEntity);
+              log.info(
+                  "DesignationServiceImpl::loadDesignationFromExcel::persited designation in postgres with id: "
+                      + formattedId);
+              Map<String, Object> map = objectMapper.convertValue(eachDesignation, Map.class);
+              esUtilService.addDocument(Constants.DESIGNATION_INDEX_NAME, Constants.INDEX_TYPE,
+                  formattedId, map, cbServerProperties.getElasticDesignationJsonPath());
+              cacheService.putCache(formattedId, eachDesignation);
+              log.info(
+                  "DesignationServiceImpl::loadDesignationFromExcel::created the designation with: "
+                      + formattedId);
             }
-            String descriptionValue =
-                (eachDesignation.has(Constants.DESCRIPTION_PAYLOAD) && !eachDesignation.get(
-                    Constants.DESCRIPTION_PAYLOAD).isNull())
-                    ? eachDesignation.get(Constants.UPDATED_DESIGNATION).asText("")
-                    : "";
-            ((ObjectNode) eachDesignation).put(Constants.DESCRIPTION, descriptionValue);
-            payloadValidation.validatePayload(Constants.DESIGNATION_PAYLOAD_VALIDATION,
-                eachDesignation);
-            ((ObjectNode) eachDesignation).put(Constants.STATUS, Constants.ACTIVE);
-            Timestamp currentTime = new Timestamp(System.currentTimeMillis());
-            ((ObjectNode) eachDesignation).put(Constants.CREATED_ON, String.valueOf(currentTime));
-            ((ObjectNode) eachDesignation).put(Constants.UPDATED_ON, String.valueOf(currentTime));
-            ((ObjectNode) eachDesignation).put(Constants.VERSION, 1);
-            List<String> searchTags = new ArrayList<>();
-            searchTags.add(eachDesignation.get(Constants.DESIGNATION).textValue().toLowerCase());
-            ArrayNode searchTagsArray = objectMapper.valueToTree(searchTags);
-            ((ObjectNode) eachDesignation).putArray(Constants.SEARCHTAGS).add(searchTagsArray);
-            designationEntity.setId(formattedId);
-            designationEntity.setData(eachDesignation);
-            designationEntity.setIsActive(true);
-            designationEntity.setCreatedOn(currentTime);
-            designationEntity.setUpdatedOn(currentTime);
-            designationRepository.save(designationEntity);
-            log.info(
-                "DesignationServiceImpl::loadDesignationFromExcel::persited designation in postgres with id: "
-                    + formattedId);
-            Map<String, Object> map = objectMapper.convertValue(eachDesignation, Map.class);
-            esUtilService.addDocument(Constants.DESIGNATION_INDEX_NAME, Constants.INDEX_TYPE,
-                formattedId, map, cbServerProperties.getElasticDesignationJsonPath());
-            cacheService.putCache(formattedId, eachDesignation);
-            log.info(
-                "DesignationServiceImpl::loadDesignationFromExcel::created the designation with: "
-                    + formattedId);
           }
 
         });

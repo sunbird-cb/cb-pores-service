@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import com.igot.cb.competencies.area.entity.CompetencyAreaEntity;
 import com.igot.cb.competencies.area.repository.CompetencyAreaRepository;
 import com.igot.cb.competencies.area.service.CompetencyAreaService;
-import com.igot.cb.designation.entity.DesignationEntity;
 import com.igot.cb.pores.cache.CacheService;
 import com.igot.cb.pores.dto.CustomResponse;
 import com.igot.cb.pores.elasticsearch.service.EsUtilService;
@@ -74,6 +73,7 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
           String formattedId = String.format("COMAREA-%06d", startingId.incrementAndGet());
           if (!eachDesignation.isNull()) {
             ((ObjectNode) eachDesignation).put(Constants.ID, formattedId);
+            ((ObjectNode) eachDesignation).put(Constants.TITLE, eachDesignation.get(Constants.COMPETENCY_AREA_TYPE));
             payloadValidation.validatePayload(Constants.COMP_AREA_PAYLOAD_VALIDATION,
                 eachDesignation);
             ((ObjectNode) eachDesignation).put(Constants.STATUS, Constants.ACTIVE);
@@ -123,7 +123,7 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
       searchTags.add(competencyArea.get(Constants.TITLE).textValue().toLowerCase());
       ArrayNode searchTagsArray = objectMapper.valueToTree(searchTags);
       ((ObjectNode) competencyArea).putArray(Constants.SEARCHTAGS).add(searchTagsArray);
-      competencyArea = addExtraFilds(competencyArea);
+      competencyArea = addExtraFields(competencyArea);
       competencyAreaEntity.setId(formattedId);
       competencyAreaEntity.setData(competencyArea);
       competencyAreaEntity.setIsActive(true);
@@ -152,9 +152,15 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
     }
   }
 
-  private JsonNode addExtraFilds(JsonNode competencyArea) {
+  private JsonNode addExtraFields(JsonNode competencyArea) {
     log.info("CompetencyAreaService::updateCompArea");
-
+    String descriptionValue =
+        (competencyArea.has(Constants.DESCRIPTION_PAYLOAD) && !competencyArea.get(
+            Constants.DESCRIPTION_PAYLOAD).isNull())
+            ? competencyArea.get(Constants.DESIGNATION).asText("")
+            : "";
+    ((ObjectNode) competencyArea).put(Constants.DESCRIPTION, descriptionValue);
+    ((ObjectNode) competencyArea).put(Constants.TYPE, Constants.COMPETENCY_AREA_TYPE);
   }
 
   @Override

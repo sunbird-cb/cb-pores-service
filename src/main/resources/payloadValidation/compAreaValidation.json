@@ -8,7 +8,7 @@
     "description": {
       "type": "string"
     },
-    "children": {
+    "refNodes": {
       "type": "array",
       "items": {
         "type": "string"
