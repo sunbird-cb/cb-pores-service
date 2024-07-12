@@ -18,6 +18,10 @@ import com.igot.cb.pores.util.Constants;
 import com.igot.cb.pores.util.FileProcessService;
 import com.igot.cb.pores.util.PayloadValidation;
 import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -211,5 +215,12 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
       log.error("Error while processing file: {}", e.getMessage());
       throw new RuntimeException(e.getMessage());
     }
+  }
+
+  private String convertTimeStampToDate(long timeStamp) {
+    Instant instant = Instant.ofEpochMilli(timeStamp);
+    OffsetDateTime dateTime = instant.atOffset(ZoneOffset.UTC);
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy'T'HH:mm:ss.SSS'Z'");
+    return dateTime.format(formatter);
   }
 }
