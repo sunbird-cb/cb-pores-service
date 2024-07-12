@@ -1,5 +1,8 @@
 package com.igot.cb.designation.service.impl;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,6 +15,9 @@ import com.igot.cb.designation.service.DesignationService;
 import com.igot.cb.interest.service.impl.InterestServiceImpl;
 import com.igot.cb.pores.cache.CacheService;
 import com.igot.cb.pores.dto.CustomResponse;
+import com.igot.cb.pores.dto.RespParam;
+import com.igot.cb.pores.elasticsearch.dto.SearchCriteria;
+import com.igot.cb.pores.elasticsearch.dto.SearchResult;
 import com.igot.cb.pores.elasticsearch.service.EsUtilService;
 import com.igot.cb.pores.exceptions.CustomException;
 import com.igot.cb.pores.util.CbServerProperties;
@@ -33,9 +39,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -53,6 +59,8 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -79,6 +87,12 @@ public class DesignationServiceImpl implements DesignationService {
   @Autowired
   private CbServerProperties cbServerProperties;
 
+  @Autowired
+  private RedisTemplate<String, SearchResult> redisTemplate;
+
+  @Value("${search.result.redis.ttl}")
+  private long searchResultRedisTtl;
+
   private Logger logger = LoggerFactory.getLogger(InterestServiceImpl.class);
 
   @Override
@@ -91,48 +105,47 @@ public class DesignationServiceImpl implements DesignationService {
     DesignationEntity designationEntity = new DesignationEntity();
     designationJson.forEach(
         eachDesignation -> {
+          String formattedId = String.format("DESG-%06d", startingId.incrementAndGet());
           if (!eachDesignation.isNull()) {
-            if (eachDesignation.has(Constants.COMPETENCY_AREA_TYPE) && !eachDesignation.get(
-                Constants.COMPETENCY_AREA_TYPE).isEmpty() && !eachDesignation.get(
-                Constants.COMPETENCY_AREA_TYPE).isNull()) {
-              String formattedId = String.format("DESG-%06d", startingId.incrementAndGet());
-              ((ObjectNode) eachDesignation).put(Constants.ID, formattedId);
+            ((ObjectNode) eachDesignation).put(Constants.ID, formattedId);
+            if (eachDesignation.has(Constants.UPDATED_DESIGNATION) && !eachDesignation.get(
+                Constants.UPDATED_DESIGNATION).isNull()) {
               ((ObjectNode) eachDesignation).put(Constants.DESIGNATION,
                   eachDesignation.get(Constants.UPDATED_DESIGNATION));
-              String descriptionValue =
-                  (eachDesignation.has(Constants.DESCRIPTION_PAYLOAD) && !eachDesignation.get(
-                      Constants.DESCRIPTION_PAYLOAD).isNull())
-                      ? eachDesignation.get(Constants.DESCRIPTION).asText("")
-                      : "";
-              ((ObjectNode) eachDesignation).put(Constants.DESCRIPTION, descriptionValue);
-              payloadValidation.validatePayload(Constants.DESIGNATION_PAYLOAD_VALIDATION,
-                  eachDesignation);
-              ((ObjectNode) eachDesignation).put(Constants.STATUS, Constants.ACTIVE);
-              Timestamp currentTime = new Timestamp(System.currentTimeMillis());
-              ((ObjectNode) eachDesignation).put(Constants.CREATED_ON, String.valueOf(currentTime));
-              ((ObjectNode) eachDesignation).put(Constants.UPDATED_ON, String.valueOf(currentTime));
-              ((ObjectNode) eachDesignation).put(Constants.VERSION, 1);
-              List<String> searchTags = new ArrayList<>();
-              searchTags.add(eachDesignation.get(Constants.DESIGNATION).textValue().toLowerCase());
-              ArrayNode searchTagsArray = objectMapper.valueToTree(searchTags);
-              ((ObjectNode) eachDesignation).putArray(Constants.SEARCHTAGS).add(searchTagsArray);
-              designationEntity.setId(formattedId);
-              designationEntity.setData(eachDesignation);
-              designationEntity.setIsActive(true);
-              designationEntity.setCreatedOn(currentTime);
-              designationEntity.setUpdatedOn(currentTime);
-              designationRepository.save(designationEntity);
-              log.info(
-                  "DesignationServiceImpl::loadDesignationFromExcel::persited designation in postgres with id: "
-                      + formattedId);
-              Map<String, Object> map = objectMapper.convertValue(eachDesignation, Map.class);
-              esUtilService.addDocument(Constants.DESIGNATION_INDEX_NAME, Constants.INDEX_TYPE,
-                  formattedId, map, cbServerProperties.getElasticDesignationJsonPath());
-              cacheService.putCache(formattedId, eachDesignation);
-              log.info(
-                  "DesignationServiceImpl::loadDesignationFromExcel::created the designation with: "
-                      + formattedId);
             }
+            String descriptionValue =
+                (eachDesignation.has(Constants.DESCRIPTION_PAYLOAD) && !eachDesignation.get(
+                    Constants.DESCRIPTION_PAYLOAD).isNull())
+                    ? eachDesignation.get(Constants.DESCRIPTION).asText("")
+                    : "";
+            ((ObjectNode) eachDesignation).put(Constants.DESCRIPTION, descriptionValue);
+            payloadValidation.validatePayload(Constants.DESIGNATION_PAYLOAD_VALIDATION,
+                eachDesignation);
+            ((ObjectNode) eachDesignation).put(Constants.STATUS, Constants.ACTIVE);
+            Timestamp currentTime = new Timestamp(System.currentTimeMillis());
+            ((ObjectNode) eachDesignation).put(Constants.CREATED_ON, String.valueOf(currentTime));
+            ((ObjectNode) eachDesignation).put(Constants.UPDATED_ON, String.valueOf(currentTime));
+            ((ObjectNode) eachDesignation).put(Constants.VERSION, 1);
+            List<String> searchTags = new ArrayList<>();
+            searchTags.add(eachDesignation.get(Constants.DESIGNATION).textValue().toLowerCase());
+            ArrayNode searchTagsArray = objectMapper.valueToTree(searchTags);
+            ((ObjectNode) eachDesignation).putArray(Constants.SEARCHTAGS).add(searchTagsArray);
+            designationEntity.setId(formattedId);
+            designationEntity.setData(eachDesignation);
+            designationEntity.setIsActive(true);
+            designationEntity.setCreatedOn(currentTime);
+            designationEntity.setUpdatedOn(currentTime);
+            designationRepository.save(designationEntity);
+            log.info(
+                "DesignationServiceImpl::loadDesignationFromExcel::persited designation in postgres with id: "
+                    + formattedId);
+            Map<String, Object> map = objectMapper.convertValue(eachDesignation, Map.class);
+            esUtilService.addDocument(Constants.DESIGNATION_INDEX_NAME, Constants.INDEX_TYPE,
+                formattedId, map, cbServerProperties.getElasticDesignationJsonPath());
+            cacheService.putCache(formattedId, eachDesignation);
+            log.info(
+                "DesignationServiceImpl::loadDesignationFromExcel::created the designation with: "
+                    + formattedId);
           }
 
         });
@@ -228,7 +241,7 @@ public class DesignationServiceImpl implements DesignationService {
           Map<String, Object> map = objectMapper.convertValue(jsonNode, Map.class);
           esUtilService.updateDocument(Constants.DESIGNATION_INDEX_NAME, Constants.INDEX_TYPE,
               designationEntityUpdated.getId(), map,
-              cbServerProperties.getElasticBookmarkJsonPath());
+              cbServerProperties.getElasticDesignationJsonPath());
           cacheService.putCache(designationEntityUpdated.getId(),
               designationEntityUpdated.getData());
           log.info("updated the Designation");
@@ -325,6 +338,41 @@ public class DesignationServiceImpl implements DesignationService {
       response.getParams().setStatus(Constants.FAILED);
       response.setMessage(e.getMessage());
       response.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR);
+      return response;
+    }
+  }
+
+  @Override
+  public CustomResponse searchDesignation(SearchCriteria searchCriteria) {
+    log.info("DesignationServiceImpl::searchDesignation");
+    CustomResponse response = new CustomResponse();
+    SearchResult searchResult = redisTemplate.opsForValue()
+        .get(generateRedisJwtTokenKey(searchCriteria));
+    if (searchResult != null) {
+      log.info("searchDesignation:search result fetched from redis");
+      response.getResult().put(Constants.RESULT, searchResult);
+      createSuccessResponse(response);
+      return response;
+    }
+    String searchString = searchCriteria.getSearchString();
+    if (searchString != null && searchString.length() < 2) {
+      createErrorResponse(response, "Minimum 3 characters are required to search",
+          HttpStatus.BAD_REQUEST,
+          Constants.FAILED_CONST);
+      return response;
+    }
+    try {
+      searchResult =
+          esUtilService.searchDocuments(Constants.DESIGNATION_INDEX_NAME, searchCriteria);
+      response.getResult().put(Constants.RESULT, searchResult);
+      createSuccessResponse(response);
+      return response;
+    } catch (Exception e) {
+      createErrorResponse(response, e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR,
+          Constants.FAILED_CONST);
+      redisTemplate.opsForValue()
+          .set(generateRedisJwtTokenKey(searchCriteria), searchResult, searchResultRedisTtl,
+              TimeUnit.SECONDS);
       return response;
     }
   }
@@ -471,5 +519,32 @@ public class DesignationServiceImpl implements DesignationService {
     OffsetDateTime dateTime = instant.atOffset(ZoneOffset.UTC);
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy'T'HH:mm:ss.SSS'Z'");
     return dateTime.format(formatter);
+  }
+
+  public String generateRedisJwtTokenKey(Object requestPayload) {
+    if (requestPayload != null) {
+      try {
+        String reqJsonString = objectMapper.writeValueAsString(requestPayload);
+        return JWT.create()
+            .withClaim(Constants.REQUEST_PAYLOAD, reqJsonString)
+            .sign(Algorithm.HMAC256(Constants.JWT_SECRET_KEY));
+      } catch (JsonProcessingException e) {
+        logger.error("Error occurred while converting json object to json string", e);
+      }
+    }
+    return "";
+  }
+
+  public void createSuccessResponse(CustomResponse response) {
+    response.setParams(new RespParam());
+    response.getParams().setStatus(Constants.SUCCESS);
+    response.setResponseCode(HttpStatus.OK);
+  }
+
+  public void createErrorResponse(
+      CustomResponse response, String errorMessage, HttpStatus httpStatus, String status) {
+    response.setParams(new RespParam());
+    response.getParams().setStatus(status);
+    response.setResponseCode(httpStatus);
   }
 }
