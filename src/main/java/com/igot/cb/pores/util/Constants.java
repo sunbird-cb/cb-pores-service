@@ -283,6 +283,8 @@ public class Constants {
     public static final String WF_IF = "wfId";
     public static final String INITIATIVE = "INITIATE";
     public static final String UPDATED_BY = "updatedBy";
+    public static final String  COMPETENCY_TYPE = "Competency Type";
+    public static final String THEME_TYPE = "themeType";
 
     private Constants() {
     }

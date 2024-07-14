@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.igot.cb.authentication.util.AccessTokenValidator;
-import com.igot.cb.competencies.area.entity.CompetencyAreaEntity;
 import com.igot.cb.competencies.theme.enity.CompetencyThemeEntity;
 import com.igot.cb.competencies.theme.repository.CompetencyThemeRepository;
 import com.igot.cb.competencies.theme.service.CompetencyThemeService;
@@ -78,7 +77,7 @@ public class CompetencyThemeServiceImpl implements CompetencyThemeService {
   @Override
   public void loadCompetencyTheme(MultipartFile file, String token) {
 
-    log.info("CompetencyThemeService::loadDesignationFromExcel");
+    log.info("CompetencyThemeService::loadCompetencyThemeFromExcel");
     String userId = accessTokenValidator.verifyUserToken(token);
     if (!StringUtils.isBlank(userId)){
       List<Map<String, String>> processedData = fileProcessService.processExcelFile(file);
@@ -114,6 +113,13 @@ public class CompetencyThemeServiceImpl implements CompetencyThemeService {
                 ArrayNode searchTagsArray = objectMapper.valueToTree(searchTags);
                 ((ObjectNode) dataNode).putArray(Constants.SEARCHTAGS).add(searchTagsArray);
                 dataNode = addExtraFields(dataNode);
+                if(eachCompTheme.has(Constants.COMPETENCY_TYPE) && !eachCompTheme.get(
+                    Constants.COMPETENCY_TYPE).asText().isEmpty()){
+                  JsonNode addtionalProperty = objectMapper.createObjectNode();
+                  ((ObjectNode) addtionalProperty).put(Constants.THEME_TYPE, eachCompTheme.get(
+                      Constants.COMPETENCY_TYPE).asText());
+                  ((ObjectNode) dataNode).put(Constants.ADDITIONAL_PROPERTIES, addtionalProperty);
+                }
                 compThemeEntity.setId(formattedId);
                 compThemeEntity.setData(dataNode);
                 compThemeEntity.setIsActive(true);
@@ -121,14 +127,14 @@ public class CompetencyThemeServiceImpl implements CompetencyThemeService {
                 compThemeEntity.setUpdatedOn(currentTime);
                 competencyThemeRepository.save(compThemeEntity);
                 log.info(
-                    "CompetencyThemeService::loadDesignationFromExcel::persited designation in postgres with id: "
+                    "CompetencyThemeService::loadCompetencyThemeFromExcel::persited compTheme in postgres with id: "
                         + formattedId);
                 Map<String, Object> map = objectMapper.convertValue(dataNode, Map.class);
                 esUtilService.addDocument(Constants.COMP_THEME_INDEX_NAME, Constants.INDEX_TYPE,
                     formattedId, map, cbServerProperties.getElasticCompJsonPath());
                 cacheService.putCache(formattedId, dataNode);
                 log.info(
-                    "CompetencyThemeService::loadDesignationFromExcel::created the designation with: "
+                    "CompetencyThemeService::loadCompetencyThemeExcel::created the compTheme with: "
                         + formattedId);
               }
             }
@@ -140,12 +146,12 @@ public class CompetencyThemeServiceImpl implements CompetencyThemeService {
 
   @Override
   public CustomResponse searchCompTheme(SearchCriteria searchCriteria) {
-    log.info("CompetencyAreaService::updateCompArea::persited interest in Pores");
+    log.info("CompetencyThemeService::searchCompTheme");
     CustomResponse response = new CustomResponse();
     SearchResult searchResult = redisTemplate.opsForValue()
         .get(generateRedisJwtTokenKey(searchCriteria));
     if (searchResult != null) {
-      log.info("searchDesignation:search result fetched from redis");
+      log.info("searchCompTheme:search result fetched from redis");
       response.getResult().put(Constants.RESULT, searchResult);
       createSuccessResponse(response);
       return response;
@@ -173,12 +179,6 @@ public class CompetencyThemeServiceImpl implements CompetencyThemeService {
     }
   }
 
-  private String convertTimeStampToDate(long timeStamp) {
-    Instant instant = Instant.ofEpochMilli(timeStamp);
-    OffsetDateTime dateTime = instant.atOffset(ZoneOffset.UTC);
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy'T'HH:mm:ss.SSS'Z'");
-    return dateTime.format(formatter);
-  }
 
   public String generateRedisJwtTokenKey(Object requestPayload) {
     if (requestPayload != null) {
@@ -209,12 +209,6 @@ public class CompetencyThemeServiceImpl implements CompetencyThemeService {
 
   private JsonNode addExtraFields(JsonNode jsonNode) {
     log.info("CompetencyThemeService::addExtraFields");
-    String descriptionValue =
-        (jsonNode.has(Constants.DESCRIPTION_PAYLOAD) && !jsonNode.get(
-            Constants.DESCRIPTION_PAYLOAD).isNull())
-            ? jsonNode.get(Constants.DESCRIPTION).asText("")
-            : "";
-    ((ObjectNode) jsonNode).put(Constants.DESCRIPTION, descriptionValue);
     ((ObjectNode) jsonNode).put(Constants.TYPE, Constants.COMPETENCY_THEME_TYPE);
     ((ObjectNode) jsonNode).put(Constants.VERSION, 1);
     ((ObjectNode) jsonNode).put(Constants.SOURCE, (JsonNode) null);

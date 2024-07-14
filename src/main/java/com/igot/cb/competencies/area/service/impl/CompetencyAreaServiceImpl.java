@@ -82,7 +82,7 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
 
   @Override
   public void loadCompetencyArea(MultipartFile file, String token) {
-    log.info("CompetencyAreaService::loadDesignationFromExcel");
+    log.info("CompetencyAreaService::loadCompetencyArea");
     String userId = accessTokenValidator.verifyUserToken(token);
     if (!StringUtils.isBlank(userId)){
       List<Map<String, String>> processedData = fileProcessService.processExcelFile(file);
@@ -111,7 +111,7 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
                ((ObjectNode) dataNode).put(Constants.UPDATED_ON, String.valueOf(currentTime));
                ((ObjectNode) dataNode).put(Constants.CREATED_BY, userId);
                ((ObjectNode) dataNode).put(Constants.VERSION, 1);
-               payloadValidation.validatePayload(Constants.DESIGNATION_PAYLOAD_VALIDATION,
+               payloadValidation.validatePayload(Constants.COMP_AREA_PAYLOAD_VALIDATION,
                    dataNode);
                List<String> searchTags = new ArrayList<>();
                searchTags.add(dataNode.get(Constants.TITLE).textValue().toLowerCase());
@@ -125,14 +125,14 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
                competencyAreaEntity.setUpdatedOn(currentTime);
                competencyAreaRepository.save(competencyAreaEntity);
                log.info(
-                   "CompetencyAreaService::loadDesignationFromExcel::persited designation in postgres with id: "
+                   "CompetencyAreaService::loadCompetencyArea::persited CompetencyArea in postgres with id: "
                        + formattedId);
                Map<String, Object> map = objectMapper.convertValue(dataNode, Map.class);
                esUtilService.addDocument(Constants.COMP_AREA_INDEX_NAME, Constants.INDEX_TYPE,
                    formattedId, map, cbServerProperties.getElasticCompJsonPath());
                cacheService.putCache(formattedId, dataNode);
                log.info(
-                   "CompetencyAreaService::loadDesignationFromExcel::created the designation with: "
+                   "CompetencyAreaService::loadCompetencyArea::created the CompetencyArea with: "
                        + formattedId);
              }
             }
@@ -274,7 +274,7 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
     SearchResult searchResult = redisTemplate.opsForValue()
         .get(generateRedisJwtTokenKey(searchCriteria));
     if (searchResult != null) {
-      log.info("searchDesignation:search result fetched from redis");
+      log.info("searchCompetencyArea:search result fetched from redis");
       response.getResult().put(Constants.RESULT, searchResult);
       createSuccessResponse(response);
       return response;

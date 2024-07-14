@@ -28,10 +28,10 @@ public class CompetencyThemeController {
   public ResponseEntity<String> loadCompetencyAreas(@RequestParam("file") MultipartFile file, @RequestHeader(Constants.X_AUTH_TOKEN) String token) {
     try {
       competencyThemeService.loadCompetencyTheme(file, token);
-      return ResponseEntity.ok("Loading of designations from excel is successful.");
+      return ResponseEntity.ok("Loading of competencyTheme from excel is successful.");
     } catch (Exception e) {
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-          .body("Error during loading of designation from excel: " + e.getMessage());
+          .body("Error during loading of competencyTheme from excel: " + e.getMessage());
     }
   }
 
