@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -44,13 +43,15 @@ public class DesignationController {
     CustomResponse response = designationService.readDesignation(id);
     return new ResponseEntity<>(response, response.getResponseCode());
   }
+
+  //update API to store the refNodes
+
   @PutMapping(value = "/update", produces = "application/json")
   public ResponseEntity<CustomResponse> update(@RequestBody JsonNode updateDesignationDetails) {
     CustomResponse response = designationService.updateDesignation(updateDesignationDetails);
     return new ResponseEntity<>(response, response.getResponseCode());
   }
 
-  //update API to store the refNodes
   @PostMapping("/create")
   public ResponseEntity<CustomResponse> createDesignation(@RequestBody JsonNode designationDetails) {
     CustomResponse response = designationService.createDesignation(designationDetails);
