@@ -41,7 +41,7 @@ public class CompetencyAreaController {
   }
 
   @PostMapping("/create")
-  public ResponseEntity<CustomResponse> createCompetencyArea(@RequestBody JsonNode competencyArea, String token) {
+  public ResponseEntity<CustomResponse> createCompetencyArea(@RequestBody JsonNode competencyArea, @RequestHeader(Constants.X_AUTH_TOKEN) String token) {
     CustomResponse response = competencyAreaService.createCompArea(competencyArea, token);
     return new ResponseEntity<>(response, response.getResponseCode());
   }

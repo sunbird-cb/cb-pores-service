@@ -13,7 +13,6 @@ import com.igot.cb.authentication.util.AccessTokenValidator;
 import com.igot.cb.competencies.area.entity.CompetencyAreaEntity;
 import com.igot.cb.competencies.area.repository.CompetencyAreaRepository;
 import com.igot.cb.competencies.area.service.CompetencyAreaService;
-import com.igot.cb.designation.entity.DesignationEntity;
 import com.igot.cb.pores.cache.CacheService;
 import com.igot.cb.pores.dto.CustomResponse;
 import com.igot.cb.pores.dto.RespParam;
@@ -254,7 +253,7 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
           Map<String, Object> map = objectMapper.convertValue(jsonNode, Map.class);
           esUtilService.updateDocument(Constants.COMP_AREA_INDEX_NAME, Constants.INDEX_TYPE,
               competencyAreaEntityUpdated.getId(), map,
-              cbServerProperties.getElasticBookmarkJsonPath());
+              cbServerProperties.getElasticCompJsonPath());
           cacheService.putCache(competencyAreaEntityUpdated.getId(),
               competencyAreaEntityUpdated.getData());
           log.info("updated the CompArea");
@@ -368,9 +367,9 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
     log.info("CompetencyAreaServiceImpl::deleteCompetencyArea");
     CustomResponse response = new CustomResponse();
     try {
-      Optional<CompetencyAreaEntity> optionalDesignationEntity = competencyAreaRepository.findByIdAndIsActive(id, true);
-      if (optionalDesignationEntity.isPresent()){
-        CompetencyAreaEntity competencyAreaEntity = optionalDesignationEntity.get();
+      Optional<CompetencyAreaEntity> optionalEntity = competencyAreaRepository.findByIdAndIsActive(id, true);
+      if (optionalEntity.isPresent()){
+        CompetencyAreaEntity competencyAreaEntity = optionalEntity.get();
         competencyAreaEntity.setIsActive(false);
         Timestamp currentTime = new Timestamp(System.currentTimeMillis());
         competencyAreaEntity.setUpdatedOn(currentTime);
@@ -380,7 +379,7 @@ public class CompetencyAreaServiceImpl implements CompetencyAreaService {
         competencyAreaRepository.save(competencyAreaEntity);
         Map<String, Object> map = objectMapper.convertValue(competencyAreaEntity.getData(), Map.class);
         esUtilService.addDocument(Constants.COMP_AREA_INDEX_NAME, Constants.INDEX_TYPE,
-            competencyAreaEntity.getId(), map, cbServerProperties.getElasticDesignationJsonPath());
+            competencyAreaEntity.getId(), map, cbServerProperties.getElasticCompJsonPath());
         cacheService.deleteCache(id);
         response.setResponseCode(HttpStatus.OK);
         response.setMessage(Constants.DELETED_SUCCESSFULLY);

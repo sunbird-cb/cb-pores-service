@@ -295,7 +295,7 @@ public class CompetencySubThemeServiceImpl implements CompetencySubThemeService 
           Map<String, Object> map = objectMapper.convertValue(jsonNode, Map.class);
           esUtilService.updateDocument(Constants.COMP_SUB_THEME_INDEX_NAME, Constants.INDEX_TYPE,
               competencySubThemeEntity.getId(), map,
-              cbServerProperties.getElasticBookmarkJsonPath());
+              cbServerProperties.getElasticCompJsonPath());
           cacheService.putCache(competencySubThemeEntity.getId(),
               competencySubThemeEntity.getData());
           log.info("updated the CompSubTheme");
@@ -374,9 +374,9 @@ public class CompetencySubThemeServiceImpl implements CompetencySubThemeService 
     log.info("CompetencySubThemeServiceImpl::deleteCompetencySubTheme");
     CustomResponse response = new CustomResponse();
     try {
-      Optional<CompetencySubThemeEntity> optionalDesignationEntity = competencySubThemeRepository.findByIdAndIsActive(id, true);
-      if (optionalDesignationEntity.isPresent()){
-        CompetencySubThemeEntity competencySubThemeEntity = optionalDesignationEntity.get();
+      Optional<CompetencySubThemeEntity> optionalEntity = competencySubThemeRepository.findByIdAndIsActive(id, true);
+      if (optionalEntity.isPresent()){
+        CompetencySubThemeEntity competencySubThemeEntity = optionalEntity.get();
         competencySubThemeEntity.setIsActive(false);
         Timestamp currentTime = new Timestamp(System.currentTimeMillis());
         competencySubThemeEntity.setUpdatedOn(currentTime);
@@ -385,8 +385,8 @@ public class CompetencySubThemeServiceImpl implements CompetencySubThemeService 
         ((ObjectNode) competencySubThemeEntity.getData()).put(Constants.IS_ACTIVE, false);
         competencySubThemeRepository.save(competencySubThemeEntity);
         Map<String, Object> map = objectMapper.convertValue(competencySubThemeEntity.getData(), Map.class);
-        esUtilService.addDocument(Constants.COMP_SUB_THEME_INDEX_NAME, Constants.INDEX_TYPE,
-            competencySubThemeEntity.getId(), map, cbServerProperties.getElasticDesignationJsonPath());
+        esUtilService.updateDocument(Constants.COMP_SUB_THEME_INDEX_NAME, Constants.INDEX_TYPE,
+            competencySubThemeEntity.getId(), map, cbServerProperties.getElasticCompJsonPath());
         cacheService.deleteCache(id);
         response.setResponseCode(HttpStatus.OK);
         response.setMessage(Constants.DELETED_SUCCESSFULLY);

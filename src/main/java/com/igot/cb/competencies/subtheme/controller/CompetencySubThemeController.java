@@ -48,7 +48,7 @@ public class CompetencySubThemeController {
   }
 
   @PostMapping("/create")
-  public ResponseEntity<CustomResponse> createCompetencySubTheme(@RequestBody JsonNode competencySubTheme, String token) {
+  public ResponseEntity<CustomResponse> createCompetencySubTheme(@RequestBody JsonNode competencySubTheme, @RequestHeader(Constants.X_AUTH_TOKEN) String token) {
     CustomResponse response = competencySubThemeService.createCompSubTheme(competencySubTheme, token);
     return new ResponseEntity<>(response, response.getResponseCode());
   }
