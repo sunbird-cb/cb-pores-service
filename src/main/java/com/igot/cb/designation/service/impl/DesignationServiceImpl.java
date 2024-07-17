@@ -82,9 +82,6 @@ public class DesignationServiceImpl implements DesignationService {
   private CbServerProperties cbServerProperties;
 
   @Autowired
-  private CbProperties cbProperties;
-
-  @Autowired
   private OutboundRequestHandlerServiceImpl outboundRequestHandlerServiceImpl;
 
   @Autowired
@@ -382,10 +379,10 @@ public class DesignationServiceImpl implements DesignationService {
   public ApiResponse readTerm(String Id) {
     ApiResponse response = new ApiResponse();
     try {
-      StringBuilder strUrl = new StringBuilder(cbProperties.getKnowledgeMS());
-      strUrl.append(cbProperties.getOdcsTermCrete()).append("/").append(Id).append("?framework=")
-              .append(cbProperties.getOdcsFrameworkName()).append("&category=")
-              .append(cbProperties.getOdcsCategoryName());
+      StringBuilder strUrl = new StringBuilder(cbServerProperties.getKnowledgeMS());
+      strUrl.append(cbServerProperties.getOdcsTermCrete()).append("/").append(Id).append("?framework=")
+              .append(cbServerProperties.getOdcsFrameworkName()).append("&category=")
+              .append(cbServerProperties.getOdcsCategoryName());
 
       Map<String, Object> map = new HashMap<String, Object>();
       Map<String, Object> desgResponse = (Map<String, Object>) outboundRequestHandlerServiceImpl.fetchResult(strUrl.toString());
@@ -413,7 +410,7 @@ public class DesignationServiceImpl implements DesignationService {
   }
 
   private void processDesignation(Map<String, Object> designationInput, Map<String, Object> designationMap) {
-    for (String field : cbProperties.getOdcsFields()) {
+    for (String field : cbServerProperties.getOdcsFields()) {
       if (designationInput.containsKey(field)) {
         designationMap.put(field, designationInput.get(field));
       }
@@ -434,7 +431,7 @@ public class DesignationServiceImpl implements DesignationService {
         uniqueDesg.add((String) desig.get(Constants.IDENTIFIER));
       }
       Map<String, Object> newSubDesignation = new HashMap<String, Object>();
-      for (String field : cbProperties.getOdcsFields()) {
+      for (String field : cbServerProperties.getOdcsFields()) {
         if (desig.containsKey(field)) {
           newSubDesignation.put(field, desig.get(field));
         }
