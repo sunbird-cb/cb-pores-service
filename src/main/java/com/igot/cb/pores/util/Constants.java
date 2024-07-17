@@ -289,6 +289,7 @@ public class Constants {
     public static final String UNKNOWN_IDENTIFIER = "Unknown identifier ";
     public static final String EXCEPTION_MSG_UPDATE = "Exception occurred while updating record to ";
     public static final String FRAMEWORK = "framework";
+    public static final String MDO_ADMIN ="MDO_ADMIN";
     private Constants() {
     }
 }

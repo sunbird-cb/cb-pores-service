@@ -2,9 +2,12 @@ package com.igot.cb.org.service.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.igot.cb.authentication.util.AccessTokenValidator;
+import com.igot.cb.demand.service.DemandService;
+import com.igot.cb.demand.service.DemandServiceImpl;
 import com.igot.cb.org.service.OrgService;
 import com.igot.cb.playlist.util.ProjectUtil;
 import com.igot.cb.pores.Service.OutboundRequestHandlerServiceImpl;
+import com.igot.cb.pores.exceptions.CustomException;
 import com.igot.cb.pores.util.ApiResponse;
 import com.igot.cb.pores.util.CbProperties;
 import com.igot.cb.pores.util.Constants;
@@ -33,6 +36,8 @@ public class OrgServiceImpl implements OrgService {
 
     private @Autowired AccessTokenValidator accessTokenValidator;
 
+    private @Autowired DemandService demandService;
+
     @Override
     public ApiResponse readFramework(JsonNode node, String userAuthToken) {
         ApiResponse response = ProjectUtil.createDefaultResponse(Constants.API_ORG_CREATE);
@@ -42,6 +47,12 @@ public class OrgServiceImpl implements OrgService {
             if (StringUtils.isBlank(userId)) {
                 response.getParams().setStatus(Constants.FAILED);
                 response.getParams().setErrMsg(Constants.USER_ID_DOESNT_EXIST);
+                response.setResponseCode(HttpStatus.BAD_REQUEST);
+                return response;
+            }
+            if (!demandService.isSpvRequest(userId,Constants.MDO_ADMIN)) {
+                response.getParams().setStatus(Constants.FAILED);
+                response.getParams().setErrMsg("User does not have the required role:");
                 response.setResponseCode(HttpStatus.BAD_REQUEST);
                 return response;
             }
@@ -97,6 +108,11 @@ public class OrgServiceImpl implements OrgService {
             Map<String, Object> frameworkDetails = (Map<String, Object>) apiResponse.get(Constants.FRAMEWORK);
             response.getResult().put(Constants.FRAMEWORK, frameworkDetails);
             response.setResponseCode(HttpStatus.OK);
+        } catch (CustomException e) {
+            response.getParams().setErr(e.getMessage());
+            response.setResponseCode(HttpStatus.BAD_REQUEST);
+            response.getParams().setStatus(Constants.FAILED);
+            log.error("Payload validation failed: " + e.getMessage());
         } catch(Exception e) {
             response.getParams().setErr("Failed to read framework: " + e.getMessage());
             response.getParams().setStatus(Constants.FAILED);
