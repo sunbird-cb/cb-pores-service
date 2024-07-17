@@ -8,10 +8,7 @@ import com.igot.cb.org.service.OrgService;
 import com.igot.cb.playlist.util.ProjectUtil;
 import com.igot.cb.pores.Service.OutboundRequestHandlerServiceImpl;
 import com.igot.cb.pores.exceptions.CustomException;
-import com.igot.cb.pores.util.ApiResponse;
-import com.igot.cb.pores.util.CbProperties;
-import com.igot.cb.pores.util.Constants;
-import com.igot.cb.pores.util.PayloadValidation;
+import com.igot.cb.pores.util.*;
 import com.igot.cb.transactional.cassandrautils.CassandraOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -32,17 +29,22 @@ public class OrgServiceImpl implements OrgService {
 
     private @Autowired OutboundRequestHandlerServiceImpl outboundRequestHandlerServiceImpl;
 
-    private @Autowired CbProperties cbProperties;
+    private @Autowired CbServerProperties cbServerProperties;
 
     private @Autowired AccessTokenValidator accessTokenValidator;
 
     private @Autowired DemandService demandService;
 
     @Override
-    public ApiResponse readFramework(JsonNode node, String userAuthToken) {
+    public ApiResponse readFramework(String frameworkName, String orgId, String userAuthToken) {
         ApiResponse response = ProjectUtil.createDefaultResponse(Constants.API_ORG_CREATE);
         try {
-            payloadValidation.validatePayload(Constants.ORG_FRAMEWORK_PAYLOAD_VALIDATION, node);
+            if (frameworkName == null || orgId == null) {
+                response.getParams().setStatus(Constants.FAILED);
+                response.getParams().setErrMsg("OrgID and FrameworkId is Missing");
+                response.setResponseCode(HttpStatus.BAD_REQUEST);
+                return response;
+            }
             String userId = accessTokenValidator.verifyUserToken(userAuthToken);
             if (StringUtils.isBlank(userId)) {
                 response.getParams().setStatus(Constants.FAILED);
@@ -56,8 +58,6 @@ public class OrgServiceImpl implements OrgService {
                 response.setResponseCode(HttpStatus.BAD_REQUEST);
                 return response;
             }
-            String frameworkName = node.get(Constants.FRAMEWORK_NAME).asText();
-            String orgId = node.get(Constants.ORG_ID).asText();
             Map<String, Object> propertyMap = new HashMap<>();
             propertyMap.put(Constants.ID, orgId);
             List<Map<String, Object>> orgDetails = cassandraOperation.getRecordsByPropertiesWithoutFiltering(Constants.KEYSPACE_SUNBIRD, Constants.ORG_TABLE, propertyMap, null, 1);
@@ -69,8 +69,8 @@ public class OrgServiceImpl implements OrgService {
             }
             String fwName = (String) orgDetails.get(0).get(Constants.FRAMEWORKID);
             if (fwName == null) {
-                StringBuilder strUrl = new StringBuilder(cbProperties.getKnowledgeMS());
-                strUrl.append(cbProperties.getOdcsFrameworkCreate());
+                StringBuilder strUrl = new StringBuilder(cbServerProperties.getKnowledgeMS());
+                strUrl.append(cbServerProperties.getOdcsFrameworkCreate());
                 Map<String, Object> createReq = createFrameworkRequest(orgId, frameworkName);
                 Map<String, Object> request = new HashMap<>();
                 request.put(Constants.REQUEST,createReq);
@@ -124,8 +124,8 @@ public class OrgServiceImpl implements OrgService {
     private ApiResponse frameworkRead(String frameworkId) {
         ApiResponse response = ProjectUtil.createDefaultResponse("");
         try {
-            StringBuilder strUrl = new StringBuilder(cbProperties.getKnowledgeMS());
-            strUrl.append(cbProperties.getOdcsFrameworkRead()).append("/").append(frameworkId);
+            StringBuilder strUrl = new StringBuilder(cbServerProperties.getKnowledgeMS());
+            strUrl.append(cbServerProperties.getOdcsFrameworkRead()).append("/").append(frameworkId);
             Map<String, Object> framworkResponse = (Map<String, Object>) outboundRequestHandlerServiceImpl.fetchResult(strUrl.toString());
             if (null != framworkResponse) {
                 if (Constants.OK.equalsIgnoreCase((String) framworkResponse.get(Constants.RESPONSE_CODE))) {

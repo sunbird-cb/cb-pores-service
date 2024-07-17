@@ -126,6 +126,12 @@ public class CbServerProperties {
   @Value("${odcs.designation.term.read}")
   private String odcsDesignationTermRead;
 
+  @Value("${odcs.framework.create}")
+  private String odcsFrameworkCreate;
+
+  @Value("${odcs.framework.read}")
+  private String odcsFrameworkRead;
+
   public List<String> getOdcsFields() {
     return Arrays.asList(odcsFields.split(",", -1));
   }

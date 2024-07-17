@@ -18,9 +18,9 @@ public class OrgController {
 
     private @Autowired OrgService orgService;
 
-    @PostMapping(value = "/framework/read")
-    public ResponseEntity<Object> readFramework(@RequestBody JsonNode node,  @RequestHeader(Constants.X_AUTH_TOKEN) String userAuthToken) {
-        ApiResponse response = orgService.readFramework(node,userAuthToken);
+    @GetMapping(value = "/framework/read")
+    public ResponseEntity<Object> readFramework(@RequestParam String frameworkName,@RequestParam String orgId,  @RequestHeader(Constants.X_AUTH_TOKEN) String userAuthToken) {
+        ApiResponse response = orgService.readFramework(frameworkName,orgId,userAuthToken);
         return new ResponseEntity<>(response,response.getResponseCode());
     }
 
