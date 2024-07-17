@@ -273,7 +273,22 @@ public class Constants {
     public static final String NODE_ID = "node_id";
     public static final String REF_NODES = "refNodes";
     public static final String API_DESIGNATION_CREATE = "api.designation.create";
-
+    public static final String API_ORG_CREATE = "api.org.create";
+    public static final String ORG_FRAMEWORK_PAYLOAD_VALIDATION = "/payloadValidation/createFrameworkValidation.json";
+    public static final String FRAMEWORK_NAME = "frameworkName";
+    public static final String ORGID = "orgId";
+    public static final String FRAMEWORKID  = "frameworkid";
+    public static final String CHANNELS = "channels";
+    public static final String X_CHANNEL_ID = "X-Channel-Id";
+    public static final String UPDATE = "UPDATE ";
+    public static final String SET = " SET ";
+    public static final String WHERE_ID = "where id";
+    public static final String EQUAL_WITH_QUE_MARK = " = ? ";
+    public static final String SEMICOLON = ";";
+    public static final String USER = "user";
+    public static final String UNKNOWN_IDENTIFIER = "Unknown identifier ";
+    public static final String EXCEPTION_MSG_UPDATE = "Exception occurred while updating record to ";
+    public static final String FRAMEWORK = "framework";
     private Constants() {
     }
 }

@@ -25,6 +25,18 @@ public class CbProperties {
     @Value("${odcs.category.fields}")
     private String odcsFields;
 
+    @Value("${odcs.framework.create}")
+    private String odcsFrameworkCreate;
+
+    @Value("${odcs.framework.read}")
+    private String odcsFrameworkRead;
+
+    @Value("${odcs.fields}")
+    private String odcsFileds;
+
+    @Value("${odcs.sub.fileds}")
+    private String odcsSubFileds;
+
     public String getOdcsFrameworkName() {
         return odcsFrameworkName;
     }
@@ -44,4 +56,17 @@ public class CbProperties {
     public List<String> getOdcsFields() {
         return Arrays.asList(odcsFields.split(",", -1));
     }
+
+    public String getOdcsFrameworkCreate() {
+        return odcsFrameworkCreate;
+    }
+
+    public String getOdcsFrameworkRead() {
+        return odcsFrameworkRead;
+    }
+
+    public List<String> getOdcsSubFields() {
+        return Arrays.asList(odcsFields.split(",", -1));
+    }
+
 }

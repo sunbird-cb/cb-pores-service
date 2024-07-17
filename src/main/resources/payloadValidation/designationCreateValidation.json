@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "refId": {
+      "type": "string"
+    },
+    "refType": {
+      "type": "string"
+    },
+    "code": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "refId",
+    "refType",
+    "name"
+  ]
+}
