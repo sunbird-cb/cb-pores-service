@@ -43,9 +43,9 @@ public class DesignationController {
   }
 
 
-  @PostMapping("/create")
-  public ResponseEntity<ApiResponse> createDesignation(@RequestBody JsonNode request) {
-    ApiResponse response = designationService.createDesignation(request);
+  @PostMapping("/create/term")
+  public ResponseEntity<ApiResponse> create(@RequestBody JsonNode request) {
+    ApiResponse response = designationService.createTerm(request);
     return new ResponseEntity<>(response, response.getResponseCode());
   }
 

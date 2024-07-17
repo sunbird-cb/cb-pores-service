@@ -291,7 +291,6 @@ public class Constants {
     public static final String FRAMEWORK = "framework";
     public static final String MDO_ADMIN ="MDO_ADMIN";
     public static final String VERSION = "version";
-    public static final String REF_NODES = "refNodes";
     public static final String COMP_AREA_INDEX_NAME = "comp_area_entity";
     public static final String COMP_THEME_INDEX_NAME = "comp_theme_entity";
     public static final String COMP_SUB_THEME_INDEX_NAME = "comp_sub_theme_entity";
