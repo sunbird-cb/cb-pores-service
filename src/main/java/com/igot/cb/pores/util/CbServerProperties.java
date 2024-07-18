@@ -2,6 +2,7 @@ package com.igot.cb.pores.util;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.beans.factory.annotation.Value;
@@ -107,14 +108,23 @@ public class CbServerProperties {
   @Value("${elastic.required.field.designation.json.path}")
   private String elasticDesignationJsonPath;
 
+  @Value("${knowledge.mv.service}")
+  private String knowledgeMS;
+
+  @Value("${odcs.framework.create}")
+  private String odcsFrameworkCreate;
+
+  @Value("${odcs.framework.read}")
+  private String odcsFrameworkRead;
+
+  @Value("${elastic.required.field.compArea.json.path}")
+  private String elasticCompJsonPath;
+
   @Value("${odcs.framework.name}")
   private String odcsDesignationFramework;
 
   @Value("${odcs.designation.category.name}")
   private String odcsDesignationCategory;
-
-  @Value("${knowledge.mv.service}")
-  private String knowledgeMS;
 
   @Value("${odcs.term.create}")
   private String odcsTermCrete;
@@ -125,9 +135,16 @@ public class CbServerProperties {
   @Value("${odcs.designation.term.read}")
   private String odcsDesignationTermRead;
 
+  @Value("${odcs.framework.name}")
+  private String odcsFrameworkName;
+
+  @Value("${odcs.category.name}")
+  private String odcsCategoryName;
+
   public List<String> getOdcsFields() {
     return Arrays.asList(odcsFields.split(",", -1));
   }
+
   
   @Value("${elastic.required.field.compArea.json.path}")
   private String elasticCompJsonPath;

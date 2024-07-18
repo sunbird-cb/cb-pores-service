@@ -3,10 +3,8 @@ package com.igot.cb.designation.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.igot.cb.designation.service.DesignationService;
 import com.igot.cb.pores.util.ApiResponse;
-
 import com.igot.cb.pores.dto.CustomResponse;
 import com.igot.cb.pores.elasticsearch.dto.SearchCriteria;
-
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -45,6 +43,7 @@ public class DesignationController {
   }
 
 
+
   @PostMapping("/term/create")
   public ResponseEntity<ApiResponse> createTerm(@RequestBody JsonNode request) {
     ApiResponse response = designationService.createTerm(request);
@@ -58,6 +57,7 @@ public class DesignationController {
   }
 
   //update API to store the refNodes
+
 
   @PutMapping(value = "/update", produces = "application/json")
   public ResponseEntity<CustomResponse> update(@RequestBody JsonNode updateDesignationDetails) {
