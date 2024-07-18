@@ -9,11 +9,12 @@ import org.springframework.web.multipart.MultipartFile;
 public interface DesignationService {
 
 
- public void loadDesignationFromExcel(MultipartFile file);
-
  public ApiResponse createTerm(JsonNode request);
 
  public   CustomResponse updateDesignation(JsonNode updateDesignationDetails);
+
+ public   CustomResponse updateIdentifiersToDesignation(JsonNode updateDesignationDetails);
+
 
   public void loadDesignation(MultipartFile file);
 

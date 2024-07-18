@@ -162,7 +162,7 @@ public class DesignationServiceImpl implements DesignationService {
             response.getParams().setStatus(Constants.FAILED);
           } else if (HttpStatus.NOT_FOUND.equals(readResponse.getResponseCode())) {
             Map<String, Object> reqBody = new HashMap<>();
-            request.fields().forEachRemaining(entry -> reqBody.put(entry.getKey(), entry.getValue().asText()));
+            request.fields().forEachRemaining(entry -> reqBody.put(entry.getKey(), toJavaObject(entry.getValue())));
             Map<String, Object> parentObj = new HashMap<>();
             parentObj.put(Constants.IDENTIFIER,
                     cbServerProperties.getOdcsDesignationFramework() + "_" + cbServerProperties.getOdcsDesignationCategory());
@@ -553,7 +553,7 @@ public class DesignationServiceImpl implements DesignationService {
   }
 
   @Override
-  public CustomResponse updateDesignation(JsonNode updateDesignationDetails) {
+  public CustomResponse updateIdentifiersToDesignation(JsonNode updateDesignationDetails) {
     log.info("DesignationServiceImpl::updateDesignation::inside the method");
     payloadValidation.validatePayload(Constants.DESIGNATION_PAYLOAD_VALIDATION,
             updateDesignationDetails);
@@ -730,6 +730,12 @@ public class DesignationServiceImpl implements DesignationService {
       return response;
     }
   }
+  private String convertTimeStampToDate(long timeStamp) {
+    Instant instant = Instant.ofEpochMilli(timeStamp);
+    OffsetDateTime dateTime = instant.atOffset(ZoneOffset.UTC);
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy'T'HH:mm:ss.SSS'Z'");
+    return dateTime.format(formatter);
+  }
 
   public String generateRedisJwtTokenKey(Object requestPayload) {
     if (requestPayload != null) {
@@ -757,4 +763,16 @@ public class DesignationServiceImpl implements DesignationService {
     response.getParams().setStatus(status);
     response.setResponseCode(httpStatus);
   }
+  
+  private static Object toJavaObject(JsonNode jsonNode) {
+    if (jsonNode.isObject()) {
+      Map<String, Object> map = new HashMap<>();
+      jsonNode.fields().forEachRemaining(entry -> map.put(entry.getKey(), toJavaObject(entry.getValue())));
+      return map;
+    } else {
+      return jsonNode.asText();
+    }
+  }
+  
+  
 }

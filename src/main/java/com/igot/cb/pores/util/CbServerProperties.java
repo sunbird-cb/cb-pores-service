@@ -123,7 +123,7 @@ public class CbServerProperties {
   @Value("${odcs.framework.name}")
   private String odcsDesignationFramework;
 
-  @Value("${odcs.category.name}")
+  @Value("${odcs.designation.category.name}")
   private String odcsDesignationCategory;
 
   @Value("${odcs.term.create}")
@@ -144,5 +144,16 @@ public class CbServerProperties {
   public List<String> getOdcsFields() {
     return Arrays.asList(odcsFields.split(",", -1));
   }
+
+  
+  @Value("${elastic.required.field.compArea.json.path}")
+  private String elasticCompJsonPath;
+
+  @Value("${odcs.competency.theme.category.name}")
+  private String odcsCompetencyThemeCategory;
+
+  @Value("${odcs.competency.sub.theme.category.name}")
+  private String odcsCompetencySubThemeCategory;
+
 
 }

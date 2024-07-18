@@ -265,7 +265,7 @@ public class Constants {
     public static final String DESIGNATION = "designation";
     public static final String DESCRIPTION_PAYLOAD = "Description";
     public static final String DESIGNATION_INDEX_NAME = "designation_entity";
-    public static final String DESIGNATION_CREATE_PAYLOAD_VALIDATION = "/payloadValidation/designationCreateValidation.json";
+    public static final String TERM_CREATE_PAYLOAD_VALIDATION = "/payloadValidation/termCreateValidation.json";
     public static final String REF_ID = "refId";
     public static final String REF_TYPE = "refType";
     public static final String CODE = "code";
@@ -309,7 +309,10 @@ public class Constants {
     public static final String UPDATED_BY = "updatedBy";
     public static final String  COMPETENCY_TYPE = "Competency Type";
     public static final String THEME_TYPE = "themeType";
-
+    public static final String COMPETENCY_AREA_VALIDATION_FILE_JSON = "/payloadValidation/competencyAreaPayloadValidation.json";
+    public static final String CIOS_CONTENT_VALIDATION_FILE_JSON = "/payloadValidation/ciosContentValidation.json";
+    public static final String API_COMPETENCY_THEME_CREATE = "api.competency.theme.create";
+    public static final String API_COMPETENCY_SUB_THEME_CREATE = "api.competency.sub.theme.create";
     private Constants() {
     }
 }
