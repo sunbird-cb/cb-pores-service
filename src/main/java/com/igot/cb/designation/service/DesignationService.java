@@ -10,7 +10,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface DesignationService {
 
-
  public ApiResponse createTerm(JsonNode request);
 
  public   CustomResponse updateIdentifiersToDesignation(JsonNode updateDesignationDetails);
@@ -28,5 +27,4 @@ public interface DesignationService {
       String id);
 
   public CustomResponse searchDesignation(SearchCriteria searchCriteria);
-
 }
