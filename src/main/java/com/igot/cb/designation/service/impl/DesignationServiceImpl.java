@@ -104,7 +104,7 @@ public class DesignationServiceImpl implements DesignationService {
 
 
   @Override
-  public void loadDesignationFromExcel(MultipartFile file) {
+  public void loadDesignation(MultipartFile file) {
     log.info("DesignationServiceImpl::loadDesignationFromExcel");
     List<Map<String, String>> processedData = processExcelFile(file);
     log.info("No.of processedData from excel: " + processedData.size());
