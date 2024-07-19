@@ -13,8 +13,6 @@ public interface DesignationService {
 
  public ApiResponse createTerm(JsonNode request);
 
- public   CustomResponse updateDesignation(JsonNode updateDesignationDetails);
-
  public   CustomResponse updateIdentifiersToDesignation(JsonNode updateDesignationDetails);
 
 
@@ -22,11 +20,13 @@ public interface DesignationService {
 
   public CustomResponse readDesignation(String id);
 
+  public CustomResponse updateDesignation(JsonNode updateDesignationDetails);
+
+  public CustomResponse createDesignation(JsonNode designationDetails);
+
   public CustomResponse deleteDesignation(
       String id);
 
   public CustomResponse searchDesignation(SearchCriteria searchCriteria);
-
-  public CustomResponse createDesignation(JsonNode node);
 
 }
