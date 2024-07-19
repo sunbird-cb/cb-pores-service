@@ -3,6 +3,7 @@ package com.igot.cb.designation.service.impl;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -16,10 +17,19 @@ import com.igot.cb.pores.Service.OutboundRequestHandlerServiceImpl;
 import com.igot.cb.pores.cache.CacheService;
 import com.igot.cb.pores.dto.CustomResponse;
 import com.igot.cb.pores.dto.RespParam;
+import com.igot.cb.pores.elasticsearch.service.EsUtilService; 
+import com.igot.cb.pores.exceptions.CustomException;
+import com.igot.cb.pores.util.*;
+import com.igot.cb.interest.service.impl.InterestServiceImpl;
+import com.igot.cb.pores.cache.CacheService;
+import com.igot.cb.pores.dto.CustomResponse;
 import com.igot.cb.pores.elasticsearch.dto.SearchCriteria;
 import com.igot.cb.pores.elasticsearch.dto.SearchResult;
 import com.igot.cb.pores.elasticsearch.service.EsUtilService;
 import com.igot.cb.pores.exceptions.CustomException;
+import com.igot.cb.pores.util.CbServerProperties;
+import com.igot.cb.pores.util.Constants;
+import com.igot.cb.pores.util.PayloadValidation;
 import com.igot.cb.pores.util.*;
 
 import java.io.BufferedReader;
@@ -380,9 +390,9 @@ public class DesignationServiceImpl implements DesignationService {
     ApiResponse response = new ApiResponse();
     try {
       StringBuilder strUrl = new StringBuilder(cbServerProperties.getKnowledgeMS());
-      strUrl.append(cbServerProperties.getOdcsTermCrete()).append("/").append(Id).append("?framework=")
-              .append(cbServerProperties.getOdcsFrameworkName()).append("&category=")
-              .append(cbServerProperties.getOdcsCategoryName());
+      strUrl.append(cbServerProperties.getOdcsDesignationTermRead()).append("/").append(Id).append("?framework=")
+              .append(cbServerProperties.getOdcsDesignationFramework()).append("&category=")
+              .append(cbServerProperties.getOdcsDesignationCategory());
 
       Map<String, Object> map = new HashMap<String, Object>();
       Map<String, Object> desgResponse = (Map<String, Object>) outboundRequestHandlerServiceImpl.fetchResult(strUrl.toString());
