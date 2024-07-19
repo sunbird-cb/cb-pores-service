@@ -14,7 +14,6 @@ public interface DesignationService {
 
  public   CustomResponse updateIdentifiersToDesignation(JsonNode updateDesignationDetails);
 
-
   public void loadDesignation(MultipartFile file);
 
   public CustomResponse readDesignation(String id);
