@@ -12,5 +12,4 @@ import java.util.Optional;
 public interface DesignationRepository extends JpaRepository<DesignationEntity, String> {
 
   Optional<DesignationEntity> findByIdAndIsActive(String id, Boolean isActive);
-
 }
