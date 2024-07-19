@@ -155,50 +155,50 @@ public class DesignationServiceImpl implements DesignationService {
     log.info("DesignationServiceImpl::loadDesignationFromExcel::created the designations");
   }
   @Override
-  public ApiResponse createTerm(JsonNode request){
+  public ApiResponse createTerm(JsonNode request) {
     ApiResponse response = ProjectUtil.createDefaultResponse(Constants.API_DESIGNATION_CREATE);
     try {
-      payloadValidation.validatePayload(Constants.DESIGNATION_CREATE_PAYLOAD_VALIDATION, request);
-      String name = request.get(Constants.NAME).asText();
-      String ref_Id = request.get(Constants.REF_ID).asText();
-      Optional<DesignationEntity> designationEntity = designationRepository.findByIdAndIsActive(ref_Id, Boolean.TRUE);
-      if (designationEntity.isPresent()) {
-        DesignationEntity designation = designationEntity.get();
-        if (designation.getIsActive()) {
-          ApiResponse readResponse = readTerm(ref_Id);
-          if (readResponse == null) {
-            response.getParams().setErr("Failed to validate sector exists or not.");
-            response.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR);
-            response.getParams().setStatus(Constants.FAILED);
-          } else if (HttpStatus.NOT_FOUND.equals(readResponse.getResponseCode())) {
-            Map<String, Object> reqBody = new HashMap<>();
-            request.fields().forEachRemaining(entry -> reqBody.put(entry.getKey(), toJavaObject(entry.getValue())));
-            Map<String, Object> parentObj = new HashMap<>();
-            parentObj.put(Constants.IDENTIFIER,
-                    cbServerProperties.getOdcsDesignationFramework() + "_" + cbServerProperties.getOdcsDesignationCategory());
-            reqBody.put(Constants.PARENTS, Arrays.asList(parentObj));
-            Map<String, Object> termReq = new HashMap<String, Object>();
-            termReq.put(Constants.TERM, reqBody);
-            Map<String, Object> createReq = new HashMap<String, Object>();
-            createReq.put(Constants.REQUEST, termReq);
-            StringBuilder strUrl = new StringBuilder(cbServerProperties.getKnowledgeMS());
-            strUrl.append(cbServerProperties.getOdcsTermCrete()).append("?framework=")
-                    .append(cbServerProperties.getOdcsDesignationFramework()).append("&category=")
-                    .append(cbServerProperties.getOdcsDesignationCategory());
-            Map<String, Object> termResponse = (Map<String, Object>) outboundRequestHandlerServiceImpl.fetchResultUsingPost(strUrl.toString(),
-                    createReq);
-            if (termResponse != null
-                    && Constants.OK.equalsIgnoreCase((String) termResponse.get(Constants.RESPONSE_CODE))) {
-              Map<String, Object> resultMap = (Map<String, Object>) termResponse.get(Constants.RESULT);
-              List<String> termIdentifier = (List<String>) resultMap.getOrDefault(Constants.NODE_ID, "");
-              log.info("Created Designation successfully with name: " + ref_Id);
-              log.info("termIdentifier : " + termIdentifier);
-              Map<String, Object> reqBodyMap = new HashMap<>();
-              reqBodyMap.put(Constants.ID, ref_Id);
-              reqBodyMap.put(Constants.DESIGNATION, name);
-              reqBodyMap.put(Constants.REF_NODES, termIdentifier);
-              CustomResponse desgResponse = updateDesignation(objectMapper.valueToTree(reqBodyMap));
-              if (desgResponse.getResponseCode() != HttpStatus.OK) {
+    payloadValidation.validatePayload(Constants.TERM_CREATE_PAYLOAD_VALIDATION, request);
+    String name = request.get(Constants.NAME).asText();
+    String ref_Id = request.get(Constants.REF_ID).asText();
+    Optional<DesignationEntity> designationEntity = designationRepository.findByIdAndIsActive(ref_Id, Boolean.TRUE);
+    if (designationEntity.isPresent()) {
+      DesignationEntity designation = designationEntity.get();
+      if (designation.getIsActive()) {
+        ApiResponse readResponse = readTerm(ref_Id);
+        if (readResponse == null) {
+          response.getParams().setErr("Failed to validate sector exists or not.");
+          response.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR);
+          response.getParams().setStatus(Constants.FAILED);
+        } else if (HttpStatus.NOT_FOUND.equals(readResponse.getResponseCode())) {
+          Map<String, Object> reqBody = new HashMap<>();
+          request.fields().forEachRemaining(entry -> reqBody.put(entry.getKey(), entry.getValue().asText()));
+          Map<String, Object> parentObj = new HashMap<>();
+          parentObj.put(Constants.IDENTIFIER,
+                  cbServerProperties.getOdcsDesignationFramework() + "_" + cbServerProperties.getOdcsDesignationCategory());
+          reqBody.put(Constants.PARENTS, Arrays.asList(parentObj));
+          Map<String, Object> termReq = new HashMap<String, Object>();
+          termReq.put(Constants.TERM, reqBody);
+          Map<String, Object> createReq = new HashMap<String, Object>();
+          createReq.put(Constants.REQUEST, termReq);
+          StringBuilder strUrl = new StringBuilder(cbServerProperties.getKnowledgeMS());
+          strUrl.append(cbServerProperties.getOdcsTermCrete()).append("?framework=")
+                  .append(cbServerProperties.getOdcsDesignationFramework()).append("&category=")
+                  .append(cbServerProperties.getOdcsDesignationCategory());
+          Map<String, Object> termResponse = (Map<String, Object>) outboundRequestHandlerServiceImpl.fetchResultUsingPost(strUrl.toString(),
+                  createReq);
+          if (termResponse != null
+                  && Constants.OK.equalsIgnoreCase((String) termResponse.get(Constants.RESPONSE_CODE))) {
+            Map<String, Object> resultMap = (Map<String, Object>) termResponse.get(Constants.RESULT);
+            List<String> termIdentifier = (List<String>) resultMap.getOrDefault(Constants.NODE_ID, "");
+            log.info("Created Designation successfully with name: " + ref_Id);
+            log.info("termIdentifier : " + termIdentifier);
+            Map<String, Object> reqBodyMap = new HashMap<>();
+            reqBodyMap.put(Constants.ID, ref_Id);
+            reqBodyMap.put(Constants.DESIGNATION, name);
+            reqBodyMap.put(Constants.REF_NODES, termIdentifier);
+            CustomResponse desgResponse = updateIdentifiersToDesignation(objectMapper.valueToTree(reqBodyMap));
+            if (desgResponse.getResponseCode() != HttpStatus.OK) {
                 log.error("Failed to update designation: " + response.getParams().getErr());
                 response.getParams().setErr("Failed to update designation.");
                 response.setResult(desgResponse.getResult());
