@@ -57,7 +57,6 @@ public class DesignationController {
 
   //update API to store the refNodes
 
-
   @PutMapping(value = "/update", produces = "application/json")
   public ResponseEntity<CustomResponse> update(@RequestBody JsonNode updateDesignationDetails) {
     CustomResponse response = designationService.updateDesignation(updateDesignationDetails);
