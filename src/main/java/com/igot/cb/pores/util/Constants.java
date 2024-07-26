@@ -317,6 +317,11 @@ public class Constants {
     public static final String ASSOCIATIONS = "associations";
     public static final String PREV_TERM_CODE = "previousTermCode";
     public static final String PARENT_CATEGORY = "previousCategoryCode";
+    public static final String FRAMEWORK_STATUS = "frameworkstatus";
+    public static final String COMPLETED = "Completed";
+    public static final String FRAMEWORK_PUBLISH_WAIT_MSG = "Framework creation request has been published Awaiting processing.";
+    public static final String FRAMEWORK_PROCESS_ALREADY_INITIALISED ="Already this framework creation request is initialised";
+
     private Constants() {
     }
 }
