@@ -316,7 +316,7 @@ public class Constants {
     public static final String FRAMEWORK_STATUS = "frameworkstatus";
     public static final String COMPLETED = "Completed";
     public static final String FRAMEWORK_PUBLISH_WAIT_MSG = "Framework creation request has been published Awaiting processing.";
-    public static final String FRAMEWORK_PROCESS_ALREADY_INITIALISED ="Already this framewrok creation request is initialised";
+    public static final String FRAMEWORK_PROCESS_ALREADY_INITIALISED ="Already this framework creation request is initialised";
 
     private Constants() {
     }
