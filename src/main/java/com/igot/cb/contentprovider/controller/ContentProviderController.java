@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.igot.cb.contentprovider.service.ContentPartnerService;
 import com.igot.cb.pores.dto.CustomResponse;
 import com.igot.cb.pores.elasticsearch.dto.SearchCriteria;
+import com.igot.cb.pores.util.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +30,7 @@ public class ContentProviderController {
 
     @GetMapping("/v1/read/{id}")
     public ResponseEntity<?> read(@PathVariable String id) {
-        CustomResponse response = partnerService.read(id);
+        ApiResponse response = partnerService.read(id);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
     @PostMapping("/v1/filter")

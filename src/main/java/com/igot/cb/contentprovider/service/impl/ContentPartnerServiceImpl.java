@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import com.igot.cb.contentprovider.entity.ContentPartnerEntity;
 import com.igot.cb.contentprovider.repository.ContentPartnerRepository;
 import com.igot.cb.contentprovider.service.ContentPartnerService;
+import com.igot.cb.playlist.util.ProjectUtil;
 import com.igot.cb.pores.cache.CacheService;
 import com.igot.cb.pores.dto.CustomResponse;
 import com.igot.cb.pores.dto.RespParam;
@@ -15,6 +16,7 @@ import com.igot.cb.pores.elasticsearch.dto.SearchCriteria;
 import com.igot.cb.pores.elasticsearch.dto.SearchResult;
 import com.igot.cb.pores.elasticsearch.service.EsUtilService;
 import com.igot.cb.pores.exceptions.CustomException;
+import com.igot.cb.pores.util.ApiResponse;
 import com.igot.cb.pores.util.CbServerProperties;
 import com.igot.cb.pores.util.Constants;
 import com.networknt.schema.JsonSchema;
@@ -114,12 +116,13 @@ public class ContentPartnerServiceImpl implements ContentPartnerService {
 
 
     @Override
-    public CustomResponse read(String id) {
+    public ApiResponse read(String id) {
         log.info("ContentPartnerServiceImpl::read:reading information about the content partner");
-        CustomResponse response = new CustomResponse();
+        ApiResponse response = ProjectUtil.createDefaultResponse(Constants.API_CONTENT_PROVIDER_READ);
         if (StringUtils.isEmpty(id)) {
-            response.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR);
-            response.setMessage(Constants.ID_NOT_FOUND);
+            response.getParams().setStatus(Constants.FAILED);
+            response.getParams().setErrMsg("CbPlanId is missing.");
+            response.setResponseCode(HttpStatus.BAD_REQUEST);
             return response;
         }
         try {
@@ -127,9 +130,9 @@ public class ContentPartnerServiceImpl implements ContentPartnerService {
             if (StringUtils.isNotEmpty(cachedJson)) {
                 log.info("Record coming from redis cache");
                 response
-                        .getResult()
-                        .put(Constants.RESULT, objectMapper.readValue(cachedJson, new TypeReference<Object>() {
-                        }));
+                    .getResult()
+                    .put(Constants.DATA, objectMapper.readValue(cachedJson, new TypeReference<Object>() {
+                    }));
             } else {
                 Optional<ContentPartnerEntity> entityOptional = entityRepository.findById(id);
                 if (entityOptional.isPresent()) {
@@ -138,17 +141,21 @@ public class ContentPartnerServiceImpl implements ContentPartnerService {
                     log.info("Record coming from postgres db");
                     response
                             .getResult()
-                            .put(Constants.RESULT,
+                            .put(Constants.DATA,
                                     objectMapper.convertValue(
                                             entity.getData(), new TypeReference<Object>() {
                                             }));
                 } else {
+                    response.getParams().setStatus(Constants.FAILED);
+                    response.getParams().setErrMsg("Content-partner is not exist for ID: " + id);
                     response.setResponseCode(HttpStatus.BAD_REQUEST);
                 }
             }
         } catch (Exception e) {
-            logger.error("error while processing", e);
-            throw new RuntimeException(e);
+            logger.error("Failed to Read Content-partner with ID: " + id);
+            response.getParams().setStatus(Constants.FAILED);
+            response.getParams().setErrMsg(e.getMessage());
+            response.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR);
         }
         return response;
     }

@@ -313,6 +313,7 @@ public class Constants {
     public static final String MASTER = "master";
     public static final String CONTENT_PROVIDER_INDEX_NAME = "content_provider";
     public static final String CONTENT_PARTNER = "contentPartner";
+    public static final String API_CONTENT_PROVIDER_READ = "api.content.provider.v1.read.byId";
     private Constants() {
     }
 }
