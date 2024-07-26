@@ -78,21 +78,33 @@ public class OrgServiceImpl implements OrgService {
                 response.setResponseCode(HttpStatus.BAD_REQUEST);
                 return response;
             }
-            String fwName = (String) orgDetails.get(0).get(Constants.FRAMEWORKID);
-            if (StringUtils.isBlank(fwName)) {
-                Map<String,Object> dataMap = new HashMap<>();
-                dataMap.put("orgId",orgId);
-                dataMap.put("frameworkName",frameworkName);
-                dataMap.put("termName",termName);
-                log.info("printing createReq {}",dataMap);
-                kafkaProducer.push(cbServerProperties.getTopicFrameworkCreate(),dataMap);
-                log.info("kafka message pushed for broadcast type");
-                response.getResult().put(Constants.FRAMEWORK, "Framework creation request has been published Awaiting processing.");
-                response.setResponseCode(HttpStatus.OK);
-            } else {
-                response.getResult().put(Constants.FRAMEWORK, fwName);
-                response.setResponseCode(HttpStatus.OK);
+            if (StringUtils.isBlank( (String)orgDetails.get(0).get(Constants.FRAMEWORK_STATUS))){
+                String fwName = (String) orgDetails.get(0).get(Constants.FRAMEWORKID);
+                if (StringUtils.isBlank(fwName)) {
+                    Map<String,Object> dataMap = new HashMap<>();
+                    dataMap.put("orgId",orgId);
+                    dataMap.put("frameworkName",frameworkName);
+                    dataMap.put("termName",termName);
+                    log.info("printing createReq {}",dataMap);
+                    Map<String, Object> map = new HashMap<>();
+                    map.put(Constants.ID, orgId);
+                    map.put(Constants.FRAMEWORK_STATUS, Constants.IN_PROGRESS);
+                    cassandraOperation.updateRecord(Constants.KEYSPACE_SUNBIRD, Constants.ORG_TABLE, map);
+                    kafkaProducer.push(cbServerProperties.getTopicFrameworkCreate(),dataMap);
+                    log.info("kafka message pushed for broadcast type");
+                    response.getResult().put(Constants.FRAMEWORK, "Framework creation request has been published Awaiting processing.");
+                    response.setResponseCode(HttpStatus.OK);
+                } else {
+                    response.getResult().put(Constants.FRAMEWORK, fwName);
+                    response.setResponseCode(HttpStatus.OK);
+                }
+            }else {
+                response.getParams().setStatus(Constants.FAILED);
+                response.getParams().setErrMsg("Already this framewrok creation request is initialised");
+                response.setResponseCode(HttpStatus.BAD_REQUEST);
+                return response;
             }
+
         } catch (CustomException e) {
             response.getParams().setErr(e.getMessage());
             response.setResponseCode(HttpStatus.BAD_REQUEST);
