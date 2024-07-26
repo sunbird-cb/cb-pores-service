@@ -59,6 +59,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -896,7 +897,7 @@ public class DesignationServiceImpl implements DesignationService {
       logger.info("printin frameworkRead url "+url);
       Map<String, Object> frameworkResponse = (Map<String, Object>) outboundRequestHandlerServiceImpl.fetchResult(url);
 
-      if (frameworkResponse == null) {
+      if (MapUtils.isEmpty(frameworkResponse)) {
         response.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR);
         response.getParams().setErr("Failed to read framework details for ID: " + frameworkId);
         return response;
@@ -913,12 +914,14 @@ public class DesignationServiceImpl implements DesignationService {
       Map<String, Object> framework = (Map<String, Object>) resultMap.get(Constants.FRAMEWORK);
 
       List<Map<String, Object>> categories = (List<Map<String, Object>>) framework.get(Constants.CATEGORIES);
-      Map<String, Object> category = categories.stream()
-              .filter(cat -> categoryCode.equalsIgnoreCase((String) cat.get(Constants.CODE)))
-              .findFirst()
-              .orElse(null);
-
-      if (category == null) {
+      Map<String, Object> category = null;
+      if (CollectionUtils.isNotEmpty(categories)) {
+        category = categories.stream()
+                .filter(cat -> categoryCode.equalsIgnoreCase((String) cat.get(Constants.CODE)))
+                .findFirst()
+                .orElse(null);
+      }
+      if (MapUtils.isEmpty(category)) {
         response.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR);
         response.getParams().setErr("Category not found with code: " + categoryCode);
         return response;
@@ -927,12 +930,14 @@ public class DesignationServiceImpl implements DesignationService {
 
       // Retrieve terms under the category
       List<Map<String, Object>> terms = (List<Map<String, Object>>) category.get(Constants.TERMS);
-      Map<String, Object> term = terms.stream()
-              .filter(t -> termCode.equalsIgnoreCase((String) t.get(Constants.CODE)))
-              .findFirst()
-              .orElse(null);
-
-      if (term == null) {
+      Map<String, Object> term = null;
+      if (CollectionUtils.isNotEmpty(terms)) {
+        term = terms.stream()
+                .filter(t -> termCode.equalsIgnoreCase((String) t.get(Constants.CODE)))
+                .findFirst()
+                .orElse(null);
+      }
+      if (MapUtils.isEmpty(term)) {
         response.setResponseCode(HttpStatus.NOT_FOUND);
         response.getParams().setErr("Term not found with code: " + termCode);
         return response;
