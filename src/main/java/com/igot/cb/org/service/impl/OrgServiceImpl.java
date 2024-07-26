@@ -63,7 +63,7 @@ public class OrgServiceImpl implements OrgService {
                 response.setResponseCode(HttpStatus.BAD_REQUEST);
                 return response;
             }
-            if (!demandService.isSpvRequest(userId,Constants.MDO_ADMIN)) {
+            if (!demandService.isSpvRequest(userId, Constants.MDO_ADMIN)) {
                 response.getParams().setStatus(Constants.FAILED);
                 response.getParams().setErrMsg("User does not have the required role:");
                 response.setResponseCode(HttpStatus.BAD_REQUEST);
@@ -71,36 +71,40 @@ public class OrgServiceImpl implements OrgService {
             }
             Map<String, Object> propertyMap = new HashMap<>();
             propertyMap.put(Constants.ID, orgId);
-            List<Map<String, Object>> orgDetails = cassandraOperation.getRecordsByPropertiesWithoutFiltering(Constants.KEYSPACE_SUNBIRD, Constants.ORG_TABLE, propertyMap, null, 1);
+            List<Map<String, Object>> orgDetails = cassandraOperation.getRecordsByPropertiesWithoutFiltering(
+                Constants.KEYSPACE_SUNBIRD, Constants.ORG_TABLE, propertyMap, null, 1);
             if (CollectionUtils.isEmpty(orgDetails)) {
                 response.getParams().setStatus(Constants.FAILED);
                 response.getParams().setErrMsg("Organization not found");
                 response.setResponseCode(HttpStatus.BAD_REQUEST);
                 return response;
             }
-            if (StringUtils.isBlank( (String)orgDetails.get(0).get(Constants.FRAMEWORK_STATUS))){
+            if (StringUtils.isBlank((String) orgDetails.get(0).get(Constants.FRAMEWORK_STATUS))) {
                 String fwName = (String) orgDetails.get(0).get(Constants.FRAMEWORKID);
                 if (StringUtils.isBlank(fwName)) {
-                    Map<String,Object> dataMap = new HashMap<>();
-                    dataMap.put("orgId",orgId);
-                    dataMap.put("frameworkName",frameworkName);
-                    dataMap.put("termName",termName);
-                    log.info("printing createReq {}",dataMap);
+                    Map<String, Object> dataMap = new HashMap<>();
+                    dataMap.put("orgId", orgId);
+                    dataMap.put("frameworkName", frameworkName);
+                    dataMap.put("termName", termName);
+                    log.info("printing createReq {}", dataMap);
                     Map<String, Object> map = new HashMap<>();
                     map.put(Constants.ID, orgId);
                     map.put(Constants.FRAMEWORK_STATUS, Constants.IN_PROGRESS);
-                    cassandraOperation.updateRecord(Constants.KEYSPACE_SUNBIRD, Constants.ORG_TABLE, map);
-                    kafkaProducer.push(cbServerProperties.getTopicFrameworkCreate(),dataMap);
+                    cassandraOperation.updateRecord(Constants.KEYSPACE_SUNBIRD, Constants.ORG_TABLE,
+                        map);
+                    kafkaProducer.push(cbServerProperties.getTopicFrameworkCreate(), dataMap);
                     log.info("kafka message pushed for broadcast type");
-                    response.getResult().put(Constants.FRAMEWORK, "Framework creation request has been published Awaiting processing.");
+                    response.getResult().put(Constants.FRAMEWORK,
+                        Constants.FRAMEWORK_PUBLISH_WAIT_MSG);
                     response.setResponseCode(HttpStatus.OK);
                 } else {
                     response.getResult().put(Constants.FRAMEWORK, fwName);
                     response.setResponseCode(HttpStatus.OK);
                 }
-            }else {
+            } else {
                 response.getParams().setStatus(Constants.FAILED);
-                response.getParams().setErrMsg("Already this framewrok creation request is initialised");
+                response.getParams()
+                    .setErrMsg("Already this framewrok creation request is initialised");
                 response.setResponseCode(HttpStatus.BAD_REQUEST);
                 return response;
             }
@@ -110,7 +114,7 @@ public class OrgServiceImpl implements OrgService {
             response.setResponseCode(HttpStatus.BAD_REQUEST);
             response.getParams().setStatus(Constants.FAILED);
             log.error("Payload validation failed: " + e.getMessage());
-        } catch(Exception e) {
+        } catch (Exception e) {
             response.getParams().setErr("Failed to read framework: " + e.getMessage());
             response.getParams().setStatus(Constants.FAILED);
             response.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR);
