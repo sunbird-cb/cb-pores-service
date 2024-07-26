@@ -104,7 +104,7 @@ public class OrgServiceImpl implements OrgService {
             } else {
                 response.getParams().setStatus(Constants.FAILED);
                 response.getParams()
-                    .setErrMsg("Already this framewrok creation request is initialised");
+                    .setErrMsg(Constants.FRAMEWORK_PROCESS_ALREADY_INITIALISED);
                 response.setResponseCode(HttpStatus.BAD_REQUEST);
                 return response;
             }
