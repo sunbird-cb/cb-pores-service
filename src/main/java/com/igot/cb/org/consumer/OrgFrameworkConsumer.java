@@ -52,8 +52,9 @@ public class OrgFrameworkConsumer {
             List<Map<String, Object>> orgDetails = cassandraOperation.getRecordsByPropertiesWithoutFiltering(
                 Constants.KEYSPACE_SUNBIRD, Constants.ORG_TABLE, propertyMap, null, 1);
             if (!CollectionUtils.isEmpty(orgDetails)) {
-                if (StringUtils.isBlank(
-                    (String) orgDetails.get(0).get(Constants.FRAMEWORK_STATUS))) {
+                if (StringUtils.isBlank((String) orgDetails.get(0).get(Constants.FRAMEWORK_STATUS))
+                    || orgDetails.get(0).get(Constants.FRAMEWORK_STATUS).toString()
+                    .equalsIgnoreCase(Constants.FAILED)) {
 
                     Map<String, Object> mapUpdate = new HashMap<>();
                     mapUpdate.put(Constants.ID, orgId);
@@ -66,6 +67,8 @@ public class OrgFrameworkConsumer {
                         processFrameworkCreate(request);
                     });
 
+                } else {
+                    logger.error(Constants.ALREADY_INITIALIZED);
                 }
 
             } else {
