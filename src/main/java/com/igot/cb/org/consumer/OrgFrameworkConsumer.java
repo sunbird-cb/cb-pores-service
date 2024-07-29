@@ -1,21 +1,16 @@
 package com.igot.cb.org.consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.igot.cb.demand.service.DemandServiceImpl;
-import com.igot.cb.playlist.util.ProjectUtil;
 import com.igot.cb.pores.Service.OutboundRequestHandlerServiceImpl;
-import com.igot.cb.pores.util.ApiResponse;
 import com.igot.cb.pores.util.CbServerProperties;
 import com.igot.cb.pores.util.Constants;
 import com.igot.cb.transactional.cassandrautils.CassandraOperation;
 import com.igot.cb.transactional.service.RequestHandlerServiceImpl;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.elasticsearch.common.recycler.Recycler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -48,9 +43,27 @@ public class OrgFrameworkConsumer {
     public void OrgFrameworkCreateConsumer(ConsumerRecord<String, String> data) {
         try {
             Map<String, Object> request = mapper.readValue(data.value(), HashMap.class);
-            CompletableFuture.runAsync(() -> {
-                processFrameworkCreate(request);
-            });
+            String orgId = (String) request.get("orgId");
+            Map<String, Object> propertyMap = new HashMap<>();
+            propertyMap.put(Constants.ID, orgId);
+            logger.info("orgId::" + orgId);
+            List<Map<String, Object>> orgDetails = cassandraOperation.getRecordsByPropertiesWithoutFiltering(
+                Constants.KEYSPACE_SUNBIRD, Constants.ORG_TABLE, propertyMap, null, 1);
+            String fwStatus = (String) orgDetails.get(0).get(Constants.FRAMEWORK_STATUS);
+            if (fwStatus == null || !fwStatus.equalsIgnoreCase(Constants.IN_PROGRESS)) {
+                Map<String, Object> mapUpdate = new HashMap<>();
+                mapUpdate.put(Constants.ID, orgId);
+                mapUpdate.put(Constants.FRAMEWORK_STATUS, Constants.IN_PROGRESS);
+                cassandraOperation.updateRecord(
+                    Constants.KEYSPACE_SUNBIRD, Constants.ORG_TABLE, mapUpdate);
+                logger.info("  orgId::" + orgId);
+                logger.info("OrgFramework Status in Inprogress so we fw create is initiiazed");
+                CompletableFuture.runAsync(() -> {
+                    processFrameworkCreate(request);
+                });
+            } else {
+                logger.info("Skipping the event");
+            }
         } catch (Exception e) {
             logger.error("Failed to read request. Message received : " + data.value(), e);
         }
@@ -58,6 +71,7 @@ public class OrgFrameworkConsumer {
 
     public void processFrameworkCreate(Map<String,Object> dataMap) {
         try {
+            Map<String, Object> propertyMap = new HashMap<>();
             String orgId = (String) dataMap.get("orgId");
             String frameworkName = (String) dataMap.get("frameworkName");
             String termName = (String) dataMap.get("termName");
@@ -70,31 +84,52 @@ public class OrgFrameworkConsumer {
             strUrl.append(configuration.getFrameworkCopy()).append("/").append(frameworkName);
             logger.info("Printing URL for copy: {}", strUrl);
             logger.info("Printing request: {}", request);
-            Map<String, Object> frameworkResponse = (Map<String, Object>) outboundRequestHandlerServiceImpl.fetchResultUsingPost(strUrl.toString(),
-                    request, headers);
+            Map<String, Object> frameworkResponse = (Map<String, Object>) outboundRequestHandlerServiceImpl.fetchResultUsingPost(
+                strUrl.toString(),
+                request, headers);
             String responseCode = (String) frameworkResponse.get(Constants.RESPONSE_CODE);
             if (responseCode.equals(Constants.OK)) {
-                Map<String, Object> result = (Map<String, Object>) frameworkResponse.get(Constants.RESULT);
+                Map<String, Object> result = (Map<String, Object>) frameworkResponse.get(
+                    Constants.RESULT);
                 String fwName = (String) result.getOrDefault(Constants.NODE_ID, "");
+                createOrgTerm(termName, fwName, frameworkName, orgId);
+                publishFramework(fwName, orgId);
                 Map<String, Object> map = new HashMap<>();
                 map.put(Constants.FRAMEWORKID, fwName);
                 map.put(Constants.ID, orgId);
                 map.put(Constants.FRAMEWORK_STATUS, Constants.COMPLETED);
-                Map<String, Object> updateOrgDetails = cassandraOperation.updateRecord(Constants.KEYSPACE_SUNBIRD, Constants.ORG_TABLE, map);
+                Map<String, Object> updateOrgDetails = cassandraOperation.updateRecord(
+                    Constants.KEYSPACE_SUNBIRD, Constants.ORG_TABLE, map);
                 String updateResponse = (String) updateOrgDetails.get(Constants.RESPONSE);
-                if (!StringUtils.isBlank(updateResponse) && updateResponse.equalsIgnoreCase(Constants.SUCCESS)) {
-                    logger.info("Updated framework_id in organization table successfully with name: {}", fwName);
-                    createOrgTerm(termName, fwName, frameworkName);
-                    publishFramework(fwName, orgId);
+                if (!StringUtils.isBlank(updateResponse) && updateResponse.equalsIgnoreCase(
+                    Constants.SUCCESS)) {
+                    logger.info(
+                        "Updated framework_id in organization table successfully with name: {}",
+                        fwName);
+
+
                 } else {
-                    logger.error("Failed to update organization details with the new framework ID");
+                    logger.error(
+                        "Failed to update organization details with the new framework ID");
                 }
             } else {
-                logger.error("Failed to copy the framework: {}", frameworkResponse.get(Constants.RESPONSE_CODE));
+                logger.error("Failed to copy the framework: {}",
+                    frameworkResponse.get(Constants.RESPONSE_CODE));
+                updateStatusToFailed(orgId);
             }
+
         } catch (Exception e) {
             logger.error("Unexpected error occurred in processFrameworkCreate", e);
         }
+
+    }
+
+    private void updateStatusToFailed(String orgId) {
+        Map<String, Object> map = new HashMap<>();
+        map.put(Constants.ID, orgId);
+        map.put(Constants.FRAMEWORK_STATUS, Constants.FAILED);
+        Map<String, Object> updateOrgDetails = cassandraOperation.updateRecord(
+            Constants.KEYSPACE_SUNBIRD, Constants.ORG_TABLE, map);
     }
 
 
@@ -125,7 +160,7 @@ public class OrgFrameworkConsumer {
         return code;
     }
 
-    private void createOrgTerm(String termName, String framework, String masterFramework) {
+    private void createOrgTerm(String termName, String framework, String masterFramework, String orgId) {
         try {
             String category = frameworkRead(masterFramework);
             logger.info("category first "+category);
@@ -147,6 +182,7 @@ public class OrgFrameworkConsumer {
                     logger.info("Term identifier: {}", termIdentifier);
                 } else {
                     logger.info("Unable to create term with name: {}", termName);
+                    updateStatusToFailed(orgId);
                 }
             }
         } catch (Exception e) {
@@ -166,6 +202,7 @@ public class OrgFrameworkConsumer {
                 logger.info("Published the framework: {}", fwName);
             } else {
                 logger.info("Unable to publish the framework with name: {}", fwName);
+                updateStatusToFailed(orgId);
             }
         }catch (Exception e) {
             logger.error("Unexpected error occurred while publishing the framework", e);
