@@ -535,7 +535,7 @@ public class CompetencyThemeServiceImpl implements CompetencyThemeService {
               response.getParams().setStatus(Constants.FAILED);
             }
           } else if (HttpStatus.CONFLICT.equals(readResponse.getResponseCode())) {
-            String errMsg = "Term creation failed. A term with the reference ID [refId] already exists. Please use a unique reference ID." + ref_Id;
+            String errMsg = Constants.TERM_CREATION_NOT_POSSIBLE + ref_Id;
             log.error(errMsg);
             response.getParams().setErr(errMsg);
             response.setResponseCode(HttpStatus.BAD_REQUEST);
