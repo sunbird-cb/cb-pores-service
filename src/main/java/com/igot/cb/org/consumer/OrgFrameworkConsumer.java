@@ -51,9 +51,10 @@ public class OrgFrameworkConsumer {
             logger.info("orgId::" + orgId);
             List<Map<String, Object>> orgDetails = cassandraOperation.getRecordsByPropertiesWithoutFiltering(
                 Constants.KEYSPACE_SUNBIRD, Constants.ORG_TABLE, propertyMap, null, 1);
-            if (!CollectionUtils.isEmpty(orgDetails)){
-                if (StringUtils.isEmpty(
-                    (String) orgDetails.get(0).get(Constants.FRAMEWORK_STATUS))){
+            if (!CollectionUtils.isEmpty(orgDetails)) {
+                if (StringUtils.isBlank((String) orgDetails.get(0).get(Constants.FRAMEWORK_STATUS))
+                    || orgDetails.get(0).get(Constants.FRAMEWORK_STATUS).toString()
+                    .equalsIgnoreCase(Constants.FAILED)) {
                     String fwStatus = (String) orgDetails.get(0).get(Constants.FRAMEWORK_STATUS);
                     if (fwStatus == null || !fwStatus.equalsIgnoreCase(Constants.IN_PROGRESS)) {
                         Map<String, Object> mapUpdate = new HashMap<>();
@@ -61,7 +62,8 @@ public class OrgFrameworkConsumer {
                         mapUpdate.put(Constants.FRAMEWORK_STATUS, Constants.IN_PROGRESS);
                         cassandraOperation.updateRecord(
                             Constants.KEYSPACE_SUNBIRD, Constants.ORG_TABLE, mapUpdate);
-                        logger.info("OrgFrameworkConsumer::OrgFrameworkCreateConsumer:orgId:" + orgId);
+                        logger.info(
+                            "OrgFrameworkConsumer::OrgFrameworkCreateConsumer:orgId:" + orgId);
                         CompletableFuture.runAsync(() -> {
                             processFrameworkCreate(request);
                         });
@@ -70,7 +72,7 @@ public class OrgFrameworkConsumer {
                     }
                 }
 
-            }else {
+            } else {
                 logger.error(Constants.ORG_NOT_FOUND);
             }
         } catch (Exception e) {
