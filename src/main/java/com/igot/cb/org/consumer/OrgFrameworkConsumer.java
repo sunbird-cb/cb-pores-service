@@ -7,6 +7,7 @@ import com.igot.cb.pores.util.Constants;
 import com.igot.cb.transactional.cassandrautils.CassandraOperation;
 import com.igot.cb.transactional.service.RequestHandlerServiceImpl;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
@@ -55,7 +56,6 @@ public class OrgFrameworkConsumer {
                 if (StringUtils.isBlank((String) orgDetails.get(0).get(Constants.FRAMEWORK_STATUS))
                     || orgDetails.get(0).get(Constants.FRAMEWORK_STATUS).toString()
                     .equalsIgnoreCase(Constants.FAILED)) {
-
                     Map<String, Object> mapUpdate = new HashMap<>();
                     mapUpdate.put(Constants.ID, orgId);
                     mapUpdate.put(Constants.FRAMEWORK_STATUS, Constants.IN_PROGRESS);
@@ -66,11 +66,9 @@ public class OrgFrameworkConsumer {
                     CompletableFuture.runAsync(() -> {
                         processFrameworkCreate(request);
                     });
-
                 } else {
                     logger.error(Constants.ALREADY_INITIALIZED);
                 }
-
             } else {
                 logger.error(Constants.ORG_NOT_FOUND);
             }
@@ -97,8 +95,8 @@ public class OrgFrameworkConsumer {
             Map<String, Object> frameworkResponse = (Map<String, Object>) outboundRequestHandlerServiceImpl.fetchResultUsingPost(
                 strUrl.toString(),
                 request, headers);
-            if (frameworkResponse != null && "OK".equalsIgnoreCase(
-                (String) frameworkResponse.get("responseCode"))) {
+            if (MapUtils.isNotEmpty(frameworkResponse) && Constants.OK.equalsIgnoreCase(
+                (String) frameworkResponse.get(Constants.RESPONSE_CODE))) {
                 Map<String, Object> result = (Map<String, Object>) frameworkResponse.get(
                     Constants.RESULT);
                 String fwName = (String) result.getOrDefault(Constants.NODE_ID, "");
@@ -111,7 +109,7 @@ public class OrgFrameworkConsumer {
                 Map<String, Object> updateOrgDetails = cassandraOperation.updateRecord(
                     Constants.KEYSPACE_SUNBIRD, Constants.ORG_TABLE, map);
                 String updateResponse = (String) updateOrgDetails.get(Constants.RESPONSE);
-                if (!StringUtils.isBlank(updateResponse) && updateResponse.equalsIgnoreCase(
+                if (StringUtils.isNotEmpty(updateResponse) && updateResponse.equalsIgnoreCase(
                     Constants.SUCCESS)) {
                     logger.info(
                         "Updated framework_id in organization table successfully with name: {}",
@@ -204,15 +202,16 @@ public class OrgFrameworkConsumer {
             strUrl.append(configuration.getFrameworkPublish()).append("/").append(fwName);
             Map<String, String> headers = new HashMap<>();
             headers.put(Constants.X_CHANNEL_ID, orgId);
-            Map<String, Object> response = outboundRequestHandlerServiceImpl.fetchResultUsingPost(strUrl.toString(), "", headers);
+            Map<String, Object> response = outboundRequestHandlerServiceImpl.fetchResultUsingPost(
+                strUrl.toString(), "", headers);
             if (response != null
-                    && Constants.OK.equalsIgnoreCase((String) response.get(Constants.RESPONSE_CODE))) {
+                && Constants.OK.equalsIgnoreCase((String) response.get(Constants.RESPONSE_CODE))) {
                 logger.info("Published the framework: {}", fwName);
             } else {
                 logger.info("Unable to publish the framework with name: {}", fwName);
                 updateStatusToFailed(orgId);
             }
-        }catch (Exception e) {
+        } catch (Exception e) {
             logger.error("Unexpected error occurred while publishing the framework", e);
         }
     }
