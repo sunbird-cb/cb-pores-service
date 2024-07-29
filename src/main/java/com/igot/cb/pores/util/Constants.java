@@ -326,6 +326,10 @@ public class Constants {
     public static final String API_PARTNER_READ = "api.partner.read";
     public static final String API_PARTNER_DELETE = "api.partner.delete";
     public static final String API_PARTNER_SEARCH = "api.partner.search";
+    public static final String ALREADY_INITIALIZED = "Already this request have initialized by another event. So Skipping this event";
+    public static final String ORG_NOT_FOUND = "OrgDetails are not found for this orgId";
+    public static final String TERM_CREATION_NOT_POSSIBLE = "Term creation failed. A term with the reference ID already exists. Please use a unique reference ID.";
+
     private Constants() {
     }
 }
