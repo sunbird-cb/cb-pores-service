@@ -303,8 +303,8 @@ public class DesignationServiceImpl implements DesignationService {
             response.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR);
             response.getParams().setStatus(Constants.FAILED);
           }
-        } else if (HttpStatus.OK.equals(readResponse.getResponseCode())) {
-          String errMsg = "Designation already exists with name: " + ref_Id;
+        } else if (HttpStatus.CONFLICT.equals(readResponse.getResponseCode())) {
+          String errMsg = Constants.TERM_CREATION_NOT_POSSIBLE + ref_Id;
           log.error(errMsg);
           response.getParams().setErr(errMsg);
           response.setResponseCode(HttpStatus.BAD_REQUEST);
