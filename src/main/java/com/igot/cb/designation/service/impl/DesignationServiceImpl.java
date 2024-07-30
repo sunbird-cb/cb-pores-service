@@ -198,7 +198,7 @@ public class DesignationServiceImpl implements DesignationService {
     try {
       designationRepository.saveAll(designationEntityList);
       esUtilService.saveAll(Constants.DESIGNATION_INDEX_NAME, Constants.INDEX_TYPE,
-          designationDataNodeList);
+          designationDataNodeList, cbServerProperties.getElasticDesignationJsonPath());
       designationDataNodeList.forEach(dataNode -> {
         String formattedId = dataNode.get(Constants.ID).asText();
         cacheService.putCache(formattedId, dataNode);
@@ -436,13 +436,22 @@ public class DesignationServiceImpl implements DesignationService {
           response.setResponseCode(HttpStatus.OK);
           log.info("InterestServiceImpl::createInterest::persited interest in Pores");
           return response;
+        } else {
+          logger.error(Constants.NOT_FOUND);
+          response.setMessage(Constants.NOT_FOUND);
+          response.setResponseCode(HttpStatus.BAD_REQUEST);
+          return response;
         }
+      } else {
+        logger.error(Constants.ID_NOT_FOUND);
+        response.setMessage(Constants.ID_NOT_FOUND);
+        response.setResponseCode(HttpStatus.BAD_REQUEST);
+        return response;
       }
     } catch (Exception e) {
       log.error("Error while processing file: {}", e.getMessage());
       throw new RuntimeException(e.getMessage());
     }
-    return null;
   }
 
   @Override
