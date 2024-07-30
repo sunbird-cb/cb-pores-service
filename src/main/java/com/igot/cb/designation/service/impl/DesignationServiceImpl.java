@@ -433,16 +433,17 @@ public class DesignationServiceImpl implements DesignationService {
           map.put(Constants.ID, designationEntityUpdated.getId());
           response.setResult(map);
           response.setResponseCode(HttpStatus.OK);
-          log.info("InterestServiceImpl::createInterest::persited interest in Pores");
+          log.info("DesignationServiceImpl::updateDesignation:persited interest in Pores");
           return response;
         } else {
-          logger.error(Constants.NOT_FOUND);
+          logger.error(
+              "No data found for this Id: " + updateDesignationDetails.get(Constants.ID).asText());
           response.setMessage(Constants.NOT_FOUND);
           response.setResponseCode(HttpStatus.BAD_REQUEST);
           return response;
         }
       } else {
-        logger.error(Constants.ID_NOT_FOUND);
+        logger.error("Id is missing in the request");
         response.setMessage(Constants.ID_NOT_FOUND);
         response.setResponseCode(HttpStatus.BAD_REQUEST);
         return response;
