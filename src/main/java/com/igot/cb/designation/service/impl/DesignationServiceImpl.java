@@ -437,13 +437,13 @@ public class DesignationServiceImpl implements DesignationService {
           return response;
         } else {
           logger.error(
-              "No data found for this Id: " + updateDesignationDetails.get(Constants.ID).asText());
+              Constants.NO_DATA_FOR_ID + updateDesignationDetails.get(Constants.ID).asText());
           response.setMessage(Constants.NOT_FOUND);
           response.setResponseCode(HttpStatus.BAD_REQUEST);
           return response;
         }
       } else {
-        logger.error("Id is missing in the request");
+        logger.error(Constants.ID_MISSING);
         response.setMessage(Constants.ID_NOT_FOUND);
         response.setResponseCode(HttpStatus.BAD_REQUEST);
         return response;
