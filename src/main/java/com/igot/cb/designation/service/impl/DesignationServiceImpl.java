@@ -393,8 +393,7 @@ public class DesignationServiceImpl implements DesignationService {
     CustomResponse response = new CustomResponse();
     try {
       if (updateDesignationDetails.has(Constants.ID) && !updateDesignationDetails.get(Constants.ID)
-          .isNull() && updateDesignationDetails.has(Constants.REF_NODES)
-          && !updateDesignationDetails.get(Constants.REF_NODES).isNull()) {
+          .isNull()) {
         Timestamp currentTime = new Timestamp(System.currentTimeMillis());
         Optional<DesignationEntity> designationEntiy = designationRepository.findById(
             updateDesignationDetails.get(Constants.ID).asText());
@@ -434,15 +433,25 @@ public class DesignationServiceImpl implements DesignationService {
           map.put(Constants.ID, designationEntityUpdated.getId());
           response.setResult(map);
           response.setResponseCode(HttpStatus.OK);
-          log.info("InterestServiceImpl::createInterest::persited interest in Pores");
+          log.info("DesignationServiceImpl::updateDesignation:persited interest in Pores");
+          return response;
+        } else {
+          logger.error(
+              Constants.NO_DATA_FOR_ID + updateDesignationDetails.get(Constants.ID).asText());
+          response.setMessage(Constants.NOT_FOUND);
+          response.setResponseCode(HttpStatus.BAD_REQUEST);
           return response;
         }
+      } else {
+        logger.error(Constants.ID_MISSING);
+        response.setMessage(Constants.ID_NOT_FOUND);
+        response.setResponseCode(HttpStatus.BAD_REQUEST);
+        return response;
       }
     } catch (Exception e) {
       log.error("Error while processing file: {}", e.getMessage());
       throw new RuntimeException(e.getMessage());
     }
-    return null;
   }
 
   @Override
