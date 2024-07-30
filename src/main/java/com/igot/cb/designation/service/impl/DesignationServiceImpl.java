@@ -198,7 +198,7 @@ public class DesignationServiceImpl implements DesignationService {
     try {
       designationRepository.saveAll(designationEntityList);
       esUtilService.saveAll(Constants.DESIGNATION_INDEX_NAME, Constants.INDEX_TYPE,
-          designationDataNodeList, cbServerProperties.getElasticDesignationJsonPath());
+          designationDataNodeList);
       designationDataNodeList.forEach(dataNode -> {
         String formattedId = dataNode.get(Constants.ID).asText();
         cacheService.putCache(formattedId, dataNode);
@@ -393,8 +393,7 @@ public class DesignationServiceImpl implements DesignationService {
     CustomResponse response = new CustomResponse();
     try {
       if (updateDesignationDetails.has(Constants.ID) && !updateDesignationDetails.get(Constants.ID)
-          .isNull() && updateDesignationDetails.has(Constants.REF_NODES)
-          && !updateDesignationDetails.get(Constants.REF_NODES).isNull()) {
+          .isNull()) {
         Timestamp currentTime = new Timestamp(System.currentTimeMillis());
         Optional<DesignationEntity> designationEntiy = designationRepository.findById(
             updateDesignationDetails.get(Constants.ID).asText());
