@@ -197,16 +197,16 @@ public class DesignationServiceImpl implements DesignationService {
     log.info("DesignationServiceImpl::poresBulkSave");
     try {
       designationRepository.saveAll(designationEntityList);
-      esUtilService.saveAll(Constants.DESIGNATION_INDEX_NAME, Constants.INDEX_TYPE,
-          designationDataNodeList);
       designationDataNodeList.forEach(dataNode -> {
         String formattedId = dataNode.get(Constants.ID).asText();
+        Map<String, Object> map = objectMapper.convertValue(dataNode, Map.class);
+        esUtilService.addDocument(Constants.DESIGNATION_INDEX_NAME, Constants.INDEX_TYPE,
+            formattedId, map, cbServerProperties.getElasticDesignationJsonPath());
         cacheService.putCache(formattedId, dataNode);
       });
     } catch (Exception e) {
       logger.error(e.getMessage());
     }
-
   }
 
   private DesignationEntity createDesignationEntity(JsonNode eachDesignation, String formattedId) {
